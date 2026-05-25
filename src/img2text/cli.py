@@ -7,6 +7,7 @@ import click
 from img2text.config import Config
 from img2text.converter import Converter
 from img2text.detector import detect_backends
+from img2text.hook import run_hook
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
 MAX_IMAGES = 10
@@ -105,3 +106,9 @@ def config_set(key: str, value: str):
     setattr(config, key, value)
     cfg.save(config)
     click.echo(f"Set {key} = {value}")
+
+
+@main.command(name="hook-run", hidden=True)
+def hook_run():
+    """Run as UserPromptSubmit hook. Reads stdin, outputs additionalContext JSON."""
+    run_hook()

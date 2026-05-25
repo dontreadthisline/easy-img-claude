@@ -3,7 +3,7 @@ name: img2text
 description: Convert images to text descriptions so non-vision models can "see" images. Use when user provides an image file path, pastes an image, or asks to describe/analyze/look at an image. Triggers on phrases like "describe this image", "what's in this picture", "看看这张图", "分析这个截图", "图片内容是什么". Also triggered by /img2text slash command.
 ---
 
-You have access to `img2text` for converting images to text descriptions. The current model does not support vision, so you MUST use this tool whenever the user wants you to see or analyze an image. The tool is invoked via `uv run img2text`.
+You have access to `img2text` for converting images to text descriptions. The current model does not support vision, so you MUST use this tool whenever the user wants you to see or analyze an image. Run `img2text` or `uv run img2text`.
 
 ## When to Use
 

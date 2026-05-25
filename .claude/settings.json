@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python /home/zsl/projects/kinds_exer/vibe-demo/vibe-easy-img-claude/hooks/user-prompt-submit.py"
+            "command": "uv run img2text hook-run"
           }
         ]
       }
