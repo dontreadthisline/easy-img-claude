@@ -1,6 +1,7 @@
 """Shared image encoding utilities for backends."""
 
 import base64
+import mimetypes
 from pathlib import Path
 
 
@@ -10,6 +11,14 @@ def encode_image(image_path: str) -> str:
     if not path.exists():
         raise FileNotFoundError(f"Image not found: {image_path}")
     return base64.b64encode(path.read_bytes()).decode("utf-8")
+
+
+def _guess_mime_type(image_path: str) -> str:
+    """Guess MIME type from file extension, falling back to image/png."""
+    mime, _ = mimetypes.guess_type(image_path)
+    if mime and mime.startswith("image/"):
+        return mime
+    return "image/png"
 
 
 DESCRIBE_PROMPT = (
@@ -23,12 +32,13 @@ DESCRIBE_PROMPT = (
 def build_vision_message(image_path: str) -> dict:
     """Build an OpenAI-compatible vision message for the image."""
     image_data = encode_image(image_path)
+    mime_type = _guess_mime_type(image_path)
     return {
         "role": "user",
         "content": [
             {
                 "type": "image_url",
-                "image_url": {"url": f"data:image/png;base64,{image_data}"},
+                "image_url": {"url": f"data:{mime_type};base64,{image_data}"},
             },
             {"type": "text", "text": DESCRIBE_PROMPT},
         ],

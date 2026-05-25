@@ -3,7 +3,7 @@
 import httpx
 
 from img2text.backends.base import BaseBackend
-from img2text.image_utils import build_vision_message, encode_image
+from img2text.image_utils import build_vision_message
 
 DEFAULT_BASE_URL = "https://open.bigmodel.cn/api/paas/v4"
 
@@ -55,7 +55,3 @@ class ZhipuBackend(BaseBackend):
             return f"[Zhipu API error] {e.response.status_code}: {e.response.text[:500]}"
         except httpx.RequestError as e:
             return f"[Zhipu request error] {e}"
-
-    @staticmethod
-    def _encode_image(image_path: str) -> str:
-        return encode_image(image_path)

@@ -2,7 +2,7 @@
 
 import click
 
-from img2text.config import Config, BackendConfig
+from img2text.config import Config
 from img2text.converter import Converter
 from img2text.detector import detect_backends
 

@@ -16,12 +16,10 @@ class MoonshotBackend(BaseBackend):
         api_key: str,
         base_url: str = DEFAULT_BASE_URL,
         fast_model: str = "kimi",
-        detailed_model: str = "kimi",
     ):
         self.api_key = api_key
         self.base_url = base_url
         self._fast_model = fast_model
-        self._detailed_model = detailed_model
 
     @property
     def name(self) -> str:
