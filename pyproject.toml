@@ -1,0 +1,26 @@
+[project]
+name = "img2text"
+version = "0.1.0"
+description = "Image-to-text bridge for non-vision LLMs in Claude Code"
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8",
+    "httpx>=0.27",
+    "pillow>=10",
+    "pyyaml>=6",
+]
+
+[project.scripts]
+img2text = "img2text.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/img2text"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]
