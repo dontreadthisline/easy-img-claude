@@ -23,6 +23,7 @@ Installation: Add to .claude/settings.json:
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -77,11 +78,32 @@ def _is_image_path(path: str) -> bool:
     return ext in {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
 
 
+def _find_img2text() -> str | None:
+    """Find the img2text executable."""
+    # Try relative to this script's project root
+    script_dir = Path(__file__).resolve().parent.parent
+    venv_bin = script_dir / ".venv" / "bin" / "img2text"
+    if venv_bin.exists():
+        return str(venv_bin)
+    # Try uv run
+    if shutil.which("uv"):
+        return "uv run img2text"
+    # Fall back to PATH
+    if shutil.which("img2text"):
+        return "img2text"
+    return None
+
+
 def convert_image(image_path: str) -> str:
     """Run img2text convert on an image and return the description."""
+    img2text = _find_img2text()
+    if not img2text:
+        return "[img2text error] img2text not found. Install with: uv sync"
+
     try:
+        cmd = img2text.split() + ["convert", image_path, "--mode", "fast"]
         result = subprocess.run(
-            ["img2text", "convert", image_path, "--mode", "fast"],
+            cmd,
             capture_output=True,
             text=True,
             timeout=120,
