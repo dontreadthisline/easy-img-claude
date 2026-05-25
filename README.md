@@ -38,27 +38,25 @@ img2text config set provider qwen
 
 ## 配置 Hook
 
-`.claude/settings.json` (项目级) 完整示例：
+全局 `~/.claude/settings.json` 完整示例：
 
 ```json
 {
-  "hooks": {
-    "UserPromptSubmit": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "img2text hook-run"
-          }
-        ]
-      }
-    ]
-  }
+  "UserPromptSubmit": [
+    {
+      "matcher": "*",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "img2text hook-run"
+        }
+      ]
+    }
+  ]
 }
 ```
 
-全局 `~/.claude/settings.json` 去掉外层 `"hooks"` 包装，`UserPromptSubmit` 直接作为顶层 key 即可。
+项目级 `.claude/settings.json`（需要 `"hooks"` 包装器）参考本仓库的 [.claude/settings.json](.claude/settings.json)。
 
 ## 配置 Skill（可选兜底）
 
