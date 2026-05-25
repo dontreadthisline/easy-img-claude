@@ -38,41 +38,12 @@ img2text config set provider qwen
 
 ## 配置 Hook
 
-在项目 `.claude/settings.json` 中添加（注意项目级 settings 需要 `"hooks"` 包装器）：
+在 `.claude/settings.json` 中添加 `UserPromptSubmit` hook。项目级 settings 需要 `"hooks"` 包装器，全局 `~/.claude/settings.json` 则不需要。核心 command 都一样：
 
 ```json
 {
-  "hooks": {
-    "UserPromptSubmit": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "img2text hook-run"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-全局 `~/.claude/settings.json` 则不需要 `"hooks"` 包装器：
-
-```json
-{
-  "UserPromptSubmit": [
-    {
-      "matcher": "*",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "img2text hook-run"
-        }
-      ]
-    }
-  ]
+  "type": "command",
+  "command": "img2text hook-run"
 }
 ```
 
@@ -100,21 +71,13 @@ img2text convert image.jpg --backend zhipu
 
 ## 开发安装
 
-不用 uv tool，从源码运行：
-
 ```bash
 git clone https://github.com/dontreadthisline/easy-img-claude.git
 cd easy-img-claude
 uv sync
 ```
 
-Hook 配置换成：
-
-```json
-{
-  "command": "uv run img2text hook-run"
-}
-```
+Hook command 用 `uv run img2text hook-run`。
 
 ## 依赖
 
