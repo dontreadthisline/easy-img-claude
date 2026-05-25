@@ -1,14 +1,87 @@
 """Tests for CLI module."""
-import subprocess
-import sys
+from pathlib import Path
+from unittest import mock
+
+from click.testing import CliRunner
+from img2text.cli import main, convert, list_backends, config_show, config_set
+from img2text.config import BackendConfig
 
 
-def test_cli_runs_without_error():
-    """Test that the CLI binary is registered and runs."""
-    result = subprocess.run(
-        [sys.executable, "-m", "img2text", "--help"],
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == 0
-    assert "img2text" in result.stdout
+def test_cli_help():
+    """Test CLI help output."""
+    runner = CliRunner()
+    result = runner.invoke(main, ["--help"])
+    assert result.exit_code == 0
+    assert "convert" in result.output
+    assert "list-backends" in result.output
+
+
+def test_convert_command():
+    """Test convert command."""
+    runner = CliRunner()
+
+    with mock.patch("img2text.cli.Converter") as mock_conv_class:
+        mock_conv = mock.MagicMock()
+        mock_conv.convert.return_value = "A test description."
+        mock_conv_class.return_value = mock_conv
+
+        with runner.isolated_filesystem():
+            Path("test.png").write_bytes(b"fake png data")
+            result = runner.invoke(convert, ["test.png", "--mode", "fast"])
+            assert result.exit_code == 0
+            assert "A test description." in result.output
+
+
+def test_convert_missing_file():
+    """Test convert with missing file."""
+    runner = CliRunner()
+    result = runner.invoke(convert, ["/nonexistent/image.png"])
+    assert result.exit_code != 0
+
+
+def test_list_backends():
+    """Test list-backends command."""
+    runner = CliRunner()
+
+    with mock.patch("img2text.cli.detect_backends") as mock_detect:
+        mock_detect.return_value = [
+            {"name": "qwen", "status": "detected", "detail": "DASHSCOPE_API_KEY", "models": ["qwen-vl-plus"]},
+            {"name": "ollama", "status": "not_configured", "detail": "localhost:11434 not reachable", "models": []},
+        ]
+        result = runner.invoke(list_backends)
+        assert result.exit_code == 0
+        assert "qwen" in result.output
+        assert "detected" in result.output
+
+
+def test_config_show():
+    """Test config show command."""
+    runner = CliRunner()
+
+    with mock.patch("img2text.cli.Config") as mock_config_class:
+        mock_config = mock.MagicMock()
+        mock_config.load.return_value = BackendConfig(
+            provider="qwen",
+            api_key="sk-***",
+            fast_model="qwen-vl-plus",
+            detailed_model="qwen-vl-max",
+        )
+        mock_config_class.return_value = mock_config
+
+        result = runner.invoke(config_show)
+        assert result.exit_code == 0
+        assert "qwen" in result.output
+
+
+def test_config_set():
+    """Test config set command."""
+    runner = CliRunner()
+
+    with mock.patch("img2text.cli.Config") as mock_config_class:
+        mock_config = mock.MagicMock()
+        mock_config.load.return_value = BackendConfig()
+        mock_config_class.return_value = mock_config
+
+        result = runner.invoke(config_set, ["provider", "ollama"])
+        assert result.exit_code == 0
+        mock_config.save.assert_called_once()
