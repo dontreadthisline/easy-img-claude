@@ -15,7 +15,7 @@ class MoonshotBackend(BaseBackend):
         self,
         api_key: str,
         base_url: str = DEFAULT_BASE_URL,
-        fast_model: str = "kimi",
+        fast_model: str = "moonshot-v1-8k-vision-preview",
     ):
         self.api_key = api_key
         self.base_url = base_url
@@ -36,7 +36,7 @@ class MoonshotBackend(BaseBackend):
         messages = [build_vision_message(image_path)]
 
         try:
-            with httpx.Client(timeout=120) as client:
+            with httpx.Client(timeout=120, trust_env=False) as client:
                 response = client.post(
                     f"{self.base_url}/chat/completions",
                     headers={

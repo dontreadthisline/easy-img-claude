@@ -40,7 +40,7 @@ class QwenBackend(BaseBackend):
         messages = [build_vision_message(image_path)]
 
         try:
-            with httpx.Client(timeout=120) as client:
+            with httpx.Client(timeout=120, trust_env=False) as client:
                 response = client.post(
                     f"{self.base_url}/chat/completions",
                     headers={

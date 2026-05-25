@@ -42,7 +42,7 @@ def detect_backends() -> list[dict]:
         "name": "moonshot",
         "status": "detected" if os.environ.get("MOONSHOT_API_KEY") else "not_configured",
         "detail": "MOONSHOT_API_KEY" if os.environ.get("MOONSHOT_API_KEY") else "MOONSHOT_API_KEY not set",
-        "models": ["kimi vision"],
+        "models": ["moonshot-v1-8k-vision-preview"],
     })
 
     # Stepfun
