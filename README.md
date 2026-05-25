@@ -38,14 +38,27 @@ img2text config set provider qwen
 
 ## 配置 Hook
 
-在 `.claude/settings.json` 中添加 `UserPromptSubmit` hook。项目级 settings 需要 `"hooks"` 包装器，全局 `~/.claude/settings.json` 则不需要。核心 command 都一样：
+`.claude/settings.json` (项目级) 完整示例：
 
 ```json
 {
-  "type": "command",
-  "command": "img2text hook-run"
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "img2text hook-run"
+          }
+        ]
+      }
+    ]
+  }
 }
 ```
+
+全局 `~/.claude/settings.json` 去掉外层 `"hooks"` 包装，`UserPromptSubmit` 直接作为顶层 key 即可。
 
 ## 配置 Skill（可选兜底）
 
