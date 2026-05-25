@@ -1,0 +1,35 @@
+"""Shared image encoding utilities for backends."""
+
+import base64
+from pathlib import Path
+
+
+def encode_image(image_path: str) -> str:
+    """Read an image file and return base64-encoded string."""
+    path = Path(image_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Image not found: {image_path}")
+    return base64.b64encode(path.read_bytes()).decode("utf-8")
+
+
+DESCRIBE_PROMPT = (
+    "Describe this image in detail. Include all text content "
+    "(if any), layout, visual elements, colors, and notable "
+    "details. If it's a screenshot of code or terminal, "
+    "include the code/text verbatim."
+)
+
+
+def build_vision_message(image_path: str) -> dict:
+    """Build an OpenAI-compatible vision message for the image."""
+    image_data = encode_image(image_path)
+    return {
+        "role": "user",
+        "content": [
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/png;base64,{image_data}"},
+            },
+            {"type": "text", "text": DESCRIBE_PROMPT},
+        ],
+    }

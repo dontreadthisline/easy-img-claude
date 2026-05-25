@@ -1,11 +1,9 @@
 """OpenAI-compatible vision backend (also covers vLLM)."""
 
-import base64
-from pathlib import Path
-
 import httpx
 
 from img2text.backends.base import BaseBackend
+from img2text.image_utils import build_vision_message
 
 
 class OpenAICompatBackend(BaseBackend):
@@ -38,29 +36,7 @@ class OpenAICompatBackend(BaseBackend):
             raise ValueError("Base URL is required. Set OPENAI_BASE_URL.")
 
         model = self._detailed_model if mode == "detailed" else self._fast_model
-        path = Path(image_path)
-        if not path.exists():
-            raise FileNotFoundError(f"Image not found: {image_path}")
-        image_data = base64.b64encode(path.read_bytes()).decode("utf-8")
-
-        messages = [{
-            "role": "user",
-            "content": [
-                {
-                    "type": "image_url",
-                    "image_url": {"url": f"data:image/png;base64,{image_data}"},
-                },
-                {
-                    "type": "text",
-                    "text": (
-                        "Describe this image in detail. Include all text content "
-                        "(if any), layout, visual elements, colors, and notable "
-                        "details. If it's a screenshot of code or terminal, "
-                        "include the code/text verbatim."
-                    ),
-                },
-            ],
-        }]
+        messages = [build_vision_message(image_path)]
 
         try:
             with httpx.Client(timeout=120) as client:

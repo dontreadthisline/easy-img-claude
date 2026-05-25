@@ -1,11 +1,9 @@
 """Zhipu GLM vision backend."""
 
-import base64
-from pathlib import Path
-
 import httpx
 
 from img2text.backends.base import BaseBackend
+from img2text.image_utils import build_vision_message, encode_image
 
 DEFAULT_BASE_URL = "https://open.bigmodel.cn/api/paas/v4"
 
@@ -38,28 +36,7 @@ class ZhipuBackend(BaseBackend):
             raise ValueError("Zhipu API key is required. Set ZHIPUAI_API_KEY.")
 
         model = self._detailed_model if mode == "detailed" else self._fast_model
-        image_data = self._encode_image(image_path)
-
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/png;base64,{image_data}"},
-                    },
-                    {
-                        "type": "text",
-                        "text": (
-                            "Describe this image in detail. Include all text content "
-                            "(if any), layout, visual elements, colors, and notable "
-                            "details. If it's a screenshot of code or terminal, "
-                            "include the code/text verbatim."
-                        ),
-                    },
-                ],
-            }
-        ]
+        messages = [build_vision_message(image_path)]
 
         try:
             with httpx.Client(timeout=120) as client:
@@ -81,8 +58,4 @@ class ZhipuBackend(BaseBackend):
 
     @staticmethod
     def _encode_image(image_path: str) -> str:
-        """Read image file and return base64-encoded string."""
-        path = Path(image_path)
-        if not path.exists():
-            raise FileNotFoundError(f"Image not found: {image_path}")
-        return base64.b64encode(path.read_bytes()).decode("utf-8")
+        return encode_image(image_path)

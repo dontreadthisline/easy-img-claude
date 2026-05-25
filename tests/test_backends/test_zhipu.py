@@ -33,7 +33,7 @@ def test_zhipu_convert_fast():
     mock_client.__enter__.return_value.post.return_value = mock_response
 
     with mock.patch("httpx.Client", return_value=mock_client) as mock_client_cls:
-        with mock.patch("img2text.backends.zhipu.ZhipuBackend._encode_image", return_value="base64fake"):
+        with mock.patch("img2text.image_utils.encode_image", return_value="base64fake"):
             result = backend.convert("/tmp/test.png", mode="fast")
 
     assert "code screenshot" in result
