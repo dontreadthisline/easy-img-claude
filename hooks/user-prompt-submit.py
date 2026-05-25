@@ -29,13 +29,15 @@ import sys
 from pathlib import Path
 
 
-def find_image_paths(prompt: str) -> list[str]:
+def find_image_paths(prompt: str, session_id: str = "") -> list[str]:
     """Extract image file paths from the prompt text.
 
     Detects:
     - @filepath mentions (e.g., "@/home/user/screenshot.png")
+    - @directory mentions (scans non-recursively for images)
     - Direct image paths (e.g., "/path/to/image.png")
     - Paste-cache paths
+    - Pasted images ([Image #N] placeholder referencing image-cache)
     """
     paths = []
 
@@ -43,8 +45,8 @@ def find_image_paths(prompt: str) -> list[str]:
     at_pattern = re.compile(r"@([^\s]+)")
     for match in at_pattern.finditer(prompt):
         path = match.group(1)
-        if _is_image_path(path):
-            paths.append(path)
+        resolved = _resolve_path(path)
+        paths.extend(resolved)
 
     # Match direct paths with image extensions
     ext_pattern = re.compile(r"(/[^\s]*?\.(?:png|jpg|jpeg|webp|gif|bmp))", re.IGNORECASE)
@@ -61,7 +63,7 @@ def find_image_paths(prompt: str) -> list[str]:
         if path not in paths and os.path.isfile(path):
             paths.append(path)
 
-    # Check image-cache
+    # Check image-cache (direct paths in prompt text)
     image_cache_home = os.path.expanduser("~/.claude/image-cache")
     image_cache = re.compile(r"(" + re.escape(image_cache_home) + r"/\S+)")
     for match in image_cache.finditer(prompt):
@@ -69,7 +71,34 @@ def find_image_paths(prompt: str) -> list[str]:
         if path not in paths and os.path.isfile(path):
             paths.append(path)
 
+    # Pasted images: [Image #N] placeholder + session_id → image-cache
+    if session_id:
+        pasted = re.compile(r"\[Image #(\d+)\]")
+        for match in pasted.finditer(prompt):
+            n = match.group(1)
+            path = os.path.join(image_cache_home, session_id, f"{n}.png")
+            if path not in paths and os.path.isfile(path):
+                paths.append(path)
+
     return paths
+
+
+def _resolve_path(path: str) -> list[str]:
+    """Resolve a path to a list of image file paths.
+
+    If path is a directory, returns all image files in it (non-recursive).
+    If path is an image file, returns it as a single-element list.
+    """
+    if os.path.isdir(path):
+        images = sorted(
+            os.path.join(path, f)
+            for f in os.listdir(path)
+            if _is_image_path(f)
+        )
+        return images
+    elif _is_image_path(path):
+        return [path]
+    return []
 
 
 def _is_image_path(path: str) -> bool:
@@ -118,8 +147,9 @@ def convert_image(image_path: str) -> str:
 def main():
     input_data = json.load(sys.stdin)
     prompt = input_data.get("prompt", "")
+    session_id = input_data.get("session_id", "")
 
-    image_paths = find_image_paths(prompt)
+    image_paths = find_image_paths(prompt, session_id)
 
     if not image_paths:
         # No images found, pass through

@@ -1,10 +1,29 @@
 """CLI interface for img2text."""
 
+import os
+
 import click
 
 from img2text.config import Config
 from img2text.converter import Converter
 from img2text.detector import detect_backends
+
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
+MAX_IMAGES = 10
+
+
+def _is_image_file(path: str) -> bool:
+    return os.path.splitext(path)[1].lower() in IMAGE_EXTENSIONS
+
+
+def _expand_path(path: str) -> list[str]:
+    """Expand a path to image files. Directories are scanned non-recursively."""
+    if os.path.isdir(path):
+        return sorted(
+            os.path.join(path, f) for f in os.listdir(path)
+            if os.path.isfile(os.path.join(path, f)) and _is_image_file(f)
+        )[:MAX_IMAGES]
+    return [path]
 
 
 @click.group()
@@ -19,18 +38,25 @@ def main():
               help="Quality mode (default: fast)")
 @click.option("--backend", default=None, help="Override backend provider")
 def convert(image_path: str, mode: str, backend: str | None):
-    """Convert an image to a text description."""
+    """Convert an image or directory of images to text descriptions."""
     config = Config().load()
 
     if backend:
         config.provider = backend
 
+    paths = _expand_path(image_path)
+    if not paths:
+        raise click.ClickException(f"No images found in: {image_path}")
+
     converter = Converter(config)
-    try:
-        result = converter.convert(image_path, mode=mode)
-        click.echo(result)
-    except Exception as e:
-        raise click.ClickException(str(e))
+    for path in paths:
+        try:
+            result = converter.convert(path, mode=mode)
+            if len(paths) > 1:
+                click.echo(f"--- {os.path.basename(path)} ---")
+            click.echo(result)
+        except Exception as e:
+            raise click.ClickException(str(e))
 
 
 @main.command(name="list-backends")

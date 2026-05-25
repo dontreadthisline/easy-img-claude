@@ -1,13 +1,15 @@
 {
-  "UserPromptSubmit": [
-    {
-      "matcher": "*",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "python /home/zsl/projects/kinds_exer/vibe-demo/vibe-easy-img-claude/hooks/user-prompt-submit.py"
-        }
-      ]
-    }
-  ]
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python /home/zsl/projects/kinds_exer/vibe-demo/vibe-easy-img-claude/hooks/user-prompt-submit.py"
+          }
+        ]
+      }
+    ]
+  }
 }
