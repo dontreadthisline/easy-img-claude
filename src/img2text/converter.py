@@ -43,17 +43,18 @@ def _make_openai_compat_backend(name: str, config: BackendConfig) -> BaseBackend
 
     env_var, default_url, default_fast, default_detailed = _PROVIDER_DEFAULTS[name]
 
-    # Resolve base_url: explicit config > default
-    base_url = config.base_url or default_url
-
-    # Resolve api_key: explicit config > env var
-    api_key = config.api_key or os.environ.get(env_var, "not-needed")
-
-    # For ollama, append /v1 to the host if it's just host:port
-    if name == "ollama":
+    # Resolve base_url: explicit config > env var > default
+    if name == "vllm":
+        base_url = config.base_url or os.environ.get("VLLM_API_URL", "")
+    elif name == "ollama":
         base_url = (
             config.base_url or os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
         ).rstrip("/") + "/v1"
+    else:
+        base_url = config.base_url or default_url
+
+    # Resolve api_key: explicit config > env var
+    api_key = config.api_key or os.environ.get(env_var, "not-needed")
 
     return OpenAICompatBackend(
         name=name,
