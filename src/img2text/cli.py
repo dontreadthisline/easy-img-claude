@@ -89,23 +89,36 @@ def config_show():
     click.echo(f"detailed_model: {config.detailed_model or '(default)'}")
 
 
-@config_group.command(name="set")
-@click.argument("key")
-@click.argument("value")
-def config_set(key: str, value: str):
-    """Set a configuration value.
+VALID_KEYS = {"provider", "api_key", "base_url", "fast_model", "detailed_model"}
 
-    Keys: provider, api_key, base_url, fast_model, detailed_model
+
+@config_group.command(name="set")
+@click.argument("args", nargs=-1)
+def config_set(args: tuple[str]):
+    """Set one or more configuration values.
+
+    Examples:
+      img2text config set provider vllm
+      img2text config set provider vllm fast_model Qwen/Qwen2.5-VL-3B-Instruct
     """
-    valid_keys = {"provider", "api_key", "base_url", "fast_model", "detailed_model"}
-    if key not in valid_keys:
-        raise click.ClickException(f"Unknown config key: {key}. Valid keys: {', '.join(valid_keys)}")
+    if len(args) == 0:
+        raise click.ClickException("No arguments provided.")
+    if len(args) % 2 != 0:
+        raise click.ClickException(
+            f"Odd number of arguments ({len(args)}). "
+            "Provide key=value pairs: config set provider vllm fast_model Qwen/..."
+        )
 
     cfg = Config()
     config = cfg.load()
-    setattr(config, key, value)
+    for i in range(0, len(args), 2):
+        key = args[i]
+        value = args[i + 1]
+        if key not in VALID_KEYS:
+            raise click.ClickException(f"Unknown config key: {key}. Valid keys: {', '.join(sorted(VALID_KEYS))}")
+        setattr(config, key, value)
+        click.echo(f"Set {key} = {value}")
     cfg.save(config)
-    click.echo(f"Set {key} = {value}")
 
 
 @main.command(name="download-model")

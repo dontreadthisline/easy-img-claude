@@ -46,6 +46,13 @@ def _make_openai_compat_backend(name: str, config: BackendConfig) -> BaseBackend
     # Resolve base_url: explicit config > env var > default
     if name == "vllm":
         base_url = config.base_url or os.environ.get("VLLM_API_URL", "")
+        if not base_url:
+            import socket
+            try:
+                with socket.create_connection(("localhost", 8000), timeout=0.5):
+                    base_url = "http://localhost:8000/v1"
+            except (socket.timeout, ConnectionRefusedError, OSError):
+                pass
     elif name == "ollama":
         base_url = (
             config.base_url or os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")

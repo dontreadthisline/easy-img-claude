@@ -15,13 +15,7 @@ uv tool install git+https://github.com/dontreadthisline/easy-img-claude.git \
 
 ### Linux
 
-支持 API、vLLM、Ollama 后端：
-
 ```bash
-# 基础安装（API + Ollama）
-uv tool install git+https://github.com/dontreadthisline/easy-img-claude.git
-
-# 带 vLLM 支持
 uv tool install git+https://github.com/dontreadthisline/easy-img-claude.git --with vllm
 ```
 
@@ -43,19 +37,33 @@ img2text list-backends
 | Moonshot | `MOONSHOT_API_KEY` |
 | Stepfun | `STEPFUN_API_KEY` |
 | OpenAI 兼容 | `OPENAI_API_KEY` + `OPENAI_BASE_URL` |
-| Ollama | 自动检测 |
+| Ollama | 自动检测（端口 11434） |
+| vLLM | 自动检测（端口 8000）或 `VLLM_API_URL` |
 
 ```bash
 # 查看可用后端
 img2text list-backends
 
-# 手动指定
-img2text config set api_key <your-key>
-img2text config set provider qwen
+# 查看当前配置
+img2text config show
 ```
 
-手动配置
-配置参考 [config.yaml](./config.yaml)复制到 ~/.config/img2text/config.yaml,指定后端即可,默认自动探测可用后端。
+### 手动配置
+
+```bash
+# 指定单字段
+img2text config set provider qwen
+img2text config set api_key sk-xxx
+
+# 一次设置多个字段（推荐用于切换后端）
+img2text config set provider vllm fast_model Qwen/Qwen2.5-VL-3B-Instruct
+img2text config set provider ollama fast_model llava detailed_model llava
+
+# 切回自动检测，清空模型配置
+img2text config set provider "" fast_model "" detailed_model ""
+```
+
+配置文件位于 `~/.config/img2text/config.yaml`，可手动编辑。参考 [config.yaml](./config.yaml)。
 
 ## 配置 Hook
 
