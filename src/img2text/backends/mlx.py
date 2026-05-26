@@ -74,6 +74,7 @@ def _apply_patches():
             except FileNotFoundError:
                 try:
                     from transformers import AutoConfig
+
                     return AutoConfig.from_pretrained(model_path, **kwargs).to_dict()
                 except ValueError as exc:
                     raise FileNotFoundError(
@@ -97,9 +98,7 @@ def _apply_patches():
         @contextmanager
         def _patched_wired_limit(model, streams=None):
             model_bytes = _mlx_gen_mod.tree_reduce(
-                lambda acc, x: acc + x.nbytes
-                if isinstance(x, mx.array)
-                else acc,
+                lambda acc, x: acc + x.nbytes if isinstance(x, mx.array) else acc,
                 model,
                 0,
             )
@@ -166,6 +165,7 @@ class MLXBackend(BaseBackend):
             _apply_patches()
 
             from mlx_vlm.utils import load
+
             self._loaded = load(self._model, trust_remote_code=True)
         return self._loaded
 
@@ -184,9 +184,7 @@ class MLXBackend(BaseBackend):
             from mlx_vlm.prompt_utils import apply_chat_template
 
             model, processor = self._get_model()
-            prompt = apply_chat_template(
-                processor, model.config, prompt, num_images=1
-            )
+            prompt = apply_chat_template(processor, model.config, prompt, num_images=1)
             result = generate(
                 model,
                 processor,

@@ -7,10 +7,30 @@ from img2text.backends.base import BaseBackend
 
 # Provider defaults: name -> (env_var, default_base_url, default_fast_model, default_detailed_model)
 _PROVIDER_DEFAULTS: dict[str, tuple[str, str, str, str]] = {
-    "qwen": ("DASHSCOPE_API_KEY", "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen-vl-plus", "qwen-vl-max"),
-    "zhipu": ("ZHIPUAI_API_KEY", "https://open.bigmodel.cn/api/paas/v4", "glm-4v-flash", "glm-4v"),
-    "moonshot": ("MOONSHOT_API_KEY", "https://api.moonshot.cn/v1", "moonshot-v1-8k-vision-preview", "moonshot-v1-8k-vision-preview"),
-    "stepfun": ("STEPFUN_API_KEY", "https://api.stepfun.com/v1", "step-1v-8b", "step-1v-32b"),
+    "qwen": (
+        "DASHSCOPE_API_KEY",
+        "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "qwen-vl-plus",
+        "qwen-vl-max",
+    ),
+    "zhipu": (
+        "ZHIPUAI_API_KEY",
+        "https://open.bigmodel.cn/api/paas/v4",
+        "glm-4v-flash",
+        "glm-4v",
+    ),
+    "moonshot": (
+        "MOONSHOT_API_KEY",
+        "https://api.moonshot.cn/v1",
+        "moonshot-v1-8k-vision-preview",
+        "moonshot-v1-8k-vision-preview",
+    ),
+    "stepfun": (
+        "STEPFUN_API_KEY",
+        "https://api.stepfun.com/v1",
+        "step-1v-8b",
+        "step-1v-32b",
+    ),
     "openai-compat": ("OPENAI_API_KEY", "", "gpt-4o-mini", "gpt-4o"),
     "ollama": ("OLLAMA_HOST", "http://127.0.0.1:11434/v1", "minicpm-v", "minicpm-v"),
     "vllm": ("VLLM_API_URL", "", "", ""),
@@ -23,16 +43,21 @@ def _make_openai_compat_backend(name: str, config: BackendConfig) -> BaseBackend
 
     env_var, default_url, default_fast, default_detailed = _PROVIDER_DEFAULTS[name]
 
-    # Resolve base_url: explicit config > env var > default
-    base_url = config.base_url or os.environ.get(env_var, default_url)
+    # Resolve base_url: explicit config > default
+    base_url = config.base_url or default_url
+
+    # Resolve api_key: explicit config > env var
+    api_key = config.api_key or os.environ.get(env_var, "not-needed")
 
     # For ollama, append /v1 to the host if it's just host:port
     if name == "ollama":
-        base_url = (config.base_url or os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")).rstrip("/") + "/v1"
+        base_url = (
+            config.base_url or os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
+        ).rstrip("/") + "/v1"
 
     return OpenAICompatBackend(
         name=name,
-        api_key=config.api_key or "not-needed",
+        api_key=api_key,
         base_url=base_url,
         fast_model=config.fast_model or default_fast,
         detailed_model=config.detailed_model or default_detailed,
@@ -45,8 +70,11 @@ def get_backend(config: BackendConfig) -> BaseBackend:
 
     if provider == "mlx":
         from img2text.backends.mlx import MLXBackend
+
         return MLXBackend(
-            model=config.detailed_model or config.fast_model or "mlx-community/Qwen2-VL-2B-Instruct-bf16",
+            model=config.detailed_model
+            or config.fast_model
+            or "mlx-community/Qwen2-VL-2B-Instruct-bf16",
         )
 
     if provider in _PROVIDER_DEFAULTS:

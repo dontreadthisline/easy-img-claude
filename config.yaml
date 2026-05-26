@@ -1,0 +1,17 @@
+# img2text configuration
+# Copy this file to ~/.config/img2text/config.yaml
+
+backend:
+  # Vision backend provider: qwen, zhipu, moonshot, stepfun, openai-compat, ollama, vllm, mlx
+  # Set to empty string for auto-detect from environment variables
+  provider: moonshot
+
+  # API key (optional, falls back to environment variable)
+  # api_key: ${MOONSHOT_API_KEY}
+
+  # Base URL (optional, uses provider default if not set)
+  # base_url: https://api.moonshot.cn/v1
+
+  # Model names (optional, uses provider defaults)
+  # fast_model: moonshot-v1-8k-vision-preview
+  # detailed_model: moonshot-v1-8k-vision-preview
