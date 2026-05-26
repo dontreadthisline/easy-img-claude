@@ -16,6 +16,8 @@ mlx = [
     "mlx>=0.30",
     "mlx-lm>=0.30",
     "mlx-vlm>=0.3",
+    "torch>=2.11.0",
+    "torchvision>=0.26.0",
 ]
 mlx-cuda = [
     "mlx-cuda==0.30.0; sys_platform == 'linux'",
@@ -41,7 +43,11 @@ img2text = "img2text.cli:main"
 packages = ["src/img2text"]
 
 [tool.uv]
-environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+# Support both Linux x86_64 (for mlx-cuda) and macOS arm64 (for native MLX)
+environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'darwin' and platform_machine == 'arm64'",
+]
 prerelease = "allow"
 conflicts = [
   [

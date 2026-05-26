@@ -108,6 +108,38 @@ def config_set(key: str, value: str):
     click.echo(f"Set {key} = {value}")
 
 
+@main.command(name="download-model")
+@click.option("--model", default=None, help="Model to download (e.g., mlx-community/Qwen2-VL-2B-Instruct-bf16)")
+def download_model(model: str | None):
+    """Download a model for local inference (MLX backend).
+
+    Model priority: --model argument > config > default.
+    """
+    # Determine which model to download
+    if not model:
+        config = Config().load()
+        model = config.detailed_model or config.fast_model
+
+    if not model:
+        model = "mlx-community/Qwen2-VL-2B-Instruct-bf16"
+        click.echo(f"No model specified, using default: {model}")
+
+    click.echo(f"Downloading model: {model}")
+    click.echo("This may take a while depending on model size...")
+
+    try:
+        from huggingface_hub import snapshot_download
+
+        path = snapshot_download(model)
+        click.echo(click.style(f"Model downloaded to: {path}", fg="green"))
+    except ImportError:
+        raise click.ClickException(
+            "huggingface_hub not installed. Run: uv sync --extra mlx"
+        )
+    except Exception as e:
+        raise click.ClickException(f"Failed to download model: {e}")
+
+
 @main.command(name="hook-run", hidden=True)
 def hook_run():
     """Run as UserPromptSubmit hook. Reads stdin, outputs additionalContext JSON."""
