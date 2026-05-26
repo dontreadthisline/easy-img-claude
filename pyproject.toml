@@ -10,17 +10,49 @@ dependencies = [
     "socksio>=1.0.0",
 ]
 
+[project.optional-dependencies]
+vllm = ["vllm>=0.20"]
+mlx = [
+    "mlx>=0.30",
+    "mlx-lm>=0.30",
+    "mlx-vlm>=0.3",
+]
+mlx-cuda = [
+    "mlx-cuda==0.30.0; sys_platform == 'linux'",
+    "mlx==0.30.0; sys_platform == 'linux'",
+    "mlx-lm==0.30.0; sys_platform == 'linux'",
+    "mlx-vlm==0.3.0; sys_platform == 'linux'",
+    "torch>=2.11.0",
+    "torchvision>=0.26.0",
+    "nvidia-cuda-nvcc-cu12>=12.9.86",
+]
+full = ["img2text[vllm]", "img2text[mlx]"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]
+
 [project.scripts]
 img2text = "img2text.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/img2text"]
 
+[tool.uv]
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+prerelease = "allow"
+conflicts = [
+  [
+    { extra = "vllm" },
+    { extra = "mlx-cuda" },
+  ],
+  [
+    { extra = "full" },
+    { extra = "mlx-cuda" },
+  ],
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-[dependency-groups]
-dev = [
-    "pytest>=9.0.3",
-]

@@ -73,7 +73,7 @@ def get_backend(config: BackendConfig) -> BaseBackend:
     elif provider == "mlx":
         from img2text.backends.mlx import MLXBackend
         return MLXBackend(
-            model=config.detailed_model or config.fast_model or "mlx-community/qwen2-vl-7b",
+            model=config.detailed_model or config.fast_model or "mlx-community/Qwen2-VL-2B-Instruct-bf16",
         )
 
     else:
