@@ -139,12 +139,20 @@ class Converter:
                 base_url=os.environ["OPENAI_BASE_URL"],
             )
 
-        # vLLM
-        if os.environ.get("VLLM_API_URL"):
+        # vLLM (env var or default port 8000)
+        vllm_url = os.environ.get("VLLM_API_URL")
+        if not vllm_url:
+            import socket
+            try:
+                with socket.create_connection(("localhost", 8000), timeout=0.5):
+                    vllm_url = "http://localhost:8000/v1"
+            except (socket.timeout, ConnectionRefusedError, OSError):
+                pass
+        if vllm_url:
             return OpenAICompatBackend(
                 name="vllm",
                 api_key="not-needed",
-                base_url=os.environ["VLLM_API_URL"],
+                base_url=vllm_url,
             )
 
         # Fallback: Ollama on default port

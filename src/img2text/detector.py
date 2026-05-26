@@ -78,12 +78,18 @@ def detect_backends() -> list[dict]:
         "models": ["run img2text list-backends to detect models"],
     })
 
-    # vLLM
-    vllm_detected = bool(os.environ.get("VLLM_API_URL"))
+    # vLLM (env var or default port 8000)
+    vllm_url = os.environ.get("VLLM_API_URL")
+    if vllm_url:
+        vllm_detected = True
+        vllm_detail = "VLLM_API_URL"
+    else:
+        vllm_detected = _probe_port("localhost", 8000)
+        vllm_detail = "localhost:8000 reachable" if vllm_detected else "VLLM_API_URL not set"
     backends.append({
         "name": "vllm",
         "status": "detected" if vllm_detected else "not_configured",
-        "detail": "VLLM_API_URL" if vllm_detected else "VLLM_API_URL not set",
+        "detail": vllm_detail,
         "models": ["user-configured"],
     })
 
