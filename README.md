@@ -54,9 +54,8 @@ img2text config set api_key <your-key>
 img2text config set provider qwen
 ```
 
-## cli 后端配置
-
-配置参考 [config.yaml](./config.yaml),复制到 ~.config/img2text/config.yaml,指定后端即可,默认自动探测可用后端。
+手动配置
+配置参考 [config.yaml](./config.yaml)复制到 ~/.config/img2text/config.yaml,指定后端即可,默认自动探测可用后端。
 
 ## 配置 Hook
 
