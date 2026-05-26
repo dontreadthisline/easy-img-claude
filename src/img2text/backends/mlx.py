@@ -1,7 +1,7 @@
 """MLX backend for Apple Silicon (and Linux with MLX-CUDA support)."""
 
-import os
 import json
+import sys
 from pathlib import Path
 
 from img2text.backends.base import BaseBackend
@@ -85,53 +85,54 @@ def _apply_patches():
     except ImportError:
         pass
 
-    # Patch 3: mlx-vlm generate.py wired_limit
+    # Patch 3 (Linux only): mlx-vlm generate.py wired_limit
     # Calls mx.metal.device_info() which raises RuntimeError on
     # Linux with mlx-cuda (no Metal backend).
-    try:
-        import importlib
-        import mlx.core as mx
-        from contextlib import contextmanager
+    if sys.platform == "linux":
+        try:
+            import importlib
+            import mlx.core as mx
+            from contextlib import contextmanager
 
-        _mlx_gen_mod = importlib.import_module("mlx_vlm.generate")
+            _mlx_gen_mod = importlib.import_module("mlx_vlm.generate")
 
-        @contextmanager
-        def _patched_wired_limit(model, streams=None):
-            model_bytes = _mlx_gen_mod.tree_reduce(
-                lambda acc, x: acc + x.nbytes if isinstance(x, mx.array) else acc,
-                model,
-                0,
-            )
-            try:
-                max_rec_size = mx.metal.device_info()[
-                    "max_recommended_working_set_size"
-                ]
-            except RuntimeError:
-                yield None
-                return
-
-            if model_bytes > 0.9 * max_rec_size:
-                model_mb = model_bytes // 2**20
-                max_rec_mb = max_rec_size // 2**20
-                print(
-                    f"[WARNING] Generating with a model that requires {model_mb} MB "
-                    f"which is close to the maximum recommended size of "
-                    f"{max_rec_mb} MB. This can be slow. See the documentation for "
-                    "possible work-arounds: "
-                    "https://github.com/ml-explore/mlx-lm/tree/main#large-models"
+            @contextmanager
+            def _patched_wired_limit(model, streams=None):
+                model_bytes = _mlx_gen_mod.tree_reduce(
+                    lambda acc, x: acc + x.nbytes if isinstance(x, mx.array) else acc,
+                    model,
+                    0,
                 )
-            old_limit = mx.set_wired_limit(max_rec_size)
-            try:
-                yield None
-            finally:
-                if streams is not None:
-                    for s in streams:
-                        s.synchronize()
-                mx.set_wired_limit(old_limit)
+                try:
+                    max_rec_size = mx.metal.device_info()[
+                        "max_recommended_working_set_size"
+                    ]
+                except RuntimeError:
+                    yield None
+                    return
 
-        _mlx_gen_mod.wired_limit = _patched_wired_limit
-    except ImportError:
-        pass
+                if model_bytes > 0.9 * max_rec_size:
+                    model_mb = model_bytes // 2**20
+                    max_rec_mb = max_rec_size // 2**20
+                    print(
+                        f"[WARNING] Generating with a model that requires {model_mb} MB "
+                        f"which is close to the maximum recommended size of "
+                        f"{max_rec_mb} MB. This can be slow. See the documentation for "
+                        "possible work-arounds: "
+                        "https://github.com/ml-explore/mlx-lm/tree/main#large-models"
+                    )
+                old_limit = mx.set_wired_limit(max_rec_size)
+                try:
+                    yield None
+                finally:
+                    if streams is not None:
+                        for s in streams:
+                            s.synchronize()
+                    mx.set_wired_limit(old_limit)
+
+            _mlx_gen_mod.wired_limit = _patched_wired_limit
+        except ImportError:
+            pass
 
 
 class MLXBackend(BaseBackend):
@@ -156,11 +157,14 @@ class MLXBackend(BaseBackend):
     def _get_model(self):
         """Lazy-load the model and processor."""
         if self._loaded is None:
-            # Set CUDA toolkit path before importing mlx
-            cuda_path = _get_cuda_toolkit_path()
-            if cuda_path:
-                os.environ["CUDA_PATH"] = cuda_path
-                os.environ["CUDA_HOME"] = cuda_path
+            import os
+
+            # Linux only: set CUDA toolkit path for mlx-cuda
+            if sys.platform == "linux":
+                cuda_path = _get_cuda_toolkit_path()
+                if cuda_path:
+                    os.environ["CUDA_PATH"] = cuda_path
+                    os.environ["CUDA_HOME"] = cuda_path
 
             _apply_patches()
 

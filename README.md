@@ -4,14 +4,32 @@
 
 ## 安装
 
+### macOS
+
+支持 API、MLX、Ollama 后端：
+
 ```bash
-uv tool install git+https://github.com/dontreadthisline/easy-img-claude.git
+uv tool install git+https://github.com/dontreadthisline/easy-img-claude.git \
+  --with mlx --with mlx-lm --with mlx-vlm
 ```
 
-装完后 `img2text` 直接可用:
+### Linux
+
+支持 API、vLLM、Ollama 后端：
+
+```bash
+# 基础安装（API + Ollama）
+uv tool install git+https://github.com/dontreadthisline/easy-img-claude.git
+
+# 带 vLLM 支持
+uv tool install git+https://github.com/dontreadthisline/easy-img-claude.git --with vllm
+```
+
+### 验证安装
 
 ```bash
 img2text --help
+img2text list-backends
 ```
 
 ## 配置后端
@@ -35,6 +53,10 @@ img2text list-backends
 img2text config set api_key <your-key>
 img2text config set provider qwen
 ```
+
+## cli 后端配置
+
+配置参考 [config.yaml](./config.yaml),复制到 ~.config/img2text/config.yaml,指定后端即可,默认自动探测可用后端。
 
 ## 配置 Hook
 
@@ -76,6 +98,7 @@ img2text convert image.jpg --backend zhipu
 ```
 
 在 Claude Code 中：
+
 - **粘贴图片**: Ctrl+V，Hook 自动转换
 - **`@path` 引用**: `@/path/to/image.png`，Hook 自动转换
 - **Skill 兜底**: `/img2text` 手动调用
