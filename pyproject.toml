@@ -46,12 +46,7 @@ environments = [
   "sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
 prerelease = "allow"
-conflicts = [
-  [
-    { extra = "vllm" },
-    { extra = "mlx-cuda" },
-  ],
-]
+conflicts = [[{ extra = "vllm" }, { extra = "mlx-cuda" }]]
 
 [build-system]
 requires = ["hatchling"]

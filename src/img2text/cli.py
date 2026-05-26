@@ -109,35 +109,72 @@ def config_set(key: str, value: str):
 
 
 @main.command(name="download-model")
-@click.option("--model", default=None, help="Model to download (e.g., mlx-community/Qwen2-VL-2B-Instruct-bf16)")
-def download_model(model: str | None):
-    """Download a model for local inference (MLX backend).
+@click.option("--backend", default=None, type=click.Choice(["mlx", "vllm", "ollama"]),
+              help="Backend type (default: auto-detect from config or mlx)")
+@click.option("--model", default=None, help="Model to download")
+def download_model(backend: str | None, model: str | None):
+    """Download a model for local inference.
 
-    Model priority: --model argument > config > default.
+    Backends:
+    - mlx/vllm: Download from HuggingFace Hub
+    - ollama: Pull model via ollama CLI
+
+    Model priority: --model argument > config > backend default.
     """
-    # Determine which model to download
+    config = Config().load()
+
+    # Resolve backend
+    if not backend:
+        backend = config.provider if config.provider in ("mlx", "vllm", "ollama") else "mlx"
+
+    # Resolve model
     if not model:
-        config = Config().load()
         model = config.detailed_model or config.fast_model
 
-    if not model:
-        model = "mlx-community/Qwen2-VL-2B-Instruct-bf16"
-        click.echo(f"No model specified, using default: {model}")
+    if backend in ("mlx", "vllm"):
+        # HuggingFace download for mlx/vllm
+        if not model:
+            model = "mlx-community/Qwen2-VL-2B-Instruct-bf16"
+            click.echo(f"No model specified, using default: {model}")
 
-    click.echo(f"Downloading model: {model}")
-    click.echo("This may take a while depending on model size...")
+        click.echo(f"Downloading HuggingFace model: {model}")
+        click.echo("This may take a while depending on model size...")
 
-    try:
-        from huggingface_hub import snapshot_download
+        try:
+            from huggingface_hub import snapshot_download
 
-        path = snapshot_download(model)
-        click.echo(click.style(f"Model downloaded to: {path}", fg="green"))
-    except ImportError:
-        raise click.ClickException(
-            "huggingface_hub not installed. Run: uv sync --extra mlx"
-        )
-    except Exception as e:
-        raise click.ClickException(f"Failed to download model: {e}")
+            path = snapshot_download(model)
+            click.echo(click.style(f"Model downloaded to: {path}", fg="green"))
+        except ImportError:
+            raise click.ClickException(
+                "huggingface_hub not installed. Run: uv sync --extra mlx"
+            )
+        except Exception as e:
+            raise click.ClickException(f"Failed to download model: {e}")
+
+    elif backend == "ollama":
+        # Ollama pull
+        if not model:
+            model = "llava"
+            click.echo(f"No model specified, using default: {model}")
+
+        click.echo(f"Pulling Ollama model: {model}")
+
+        import subprocess
+
+        try:
+            result = subprocess.run(
+                ["ollama", "pull", model],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                raise click.ClickException(f"Ollama pull failed: {result.stderr}")
+            click.echo(click.style(f"Model pulled: {model}", fg="green"))
+        except FileNotFoundError:
+            raise click.ClickException(
+                "ollama CLI not found. Install from: https://ollama.ai"
+            )
 
 
 @main.command(name="hook-run", hidden=True)
