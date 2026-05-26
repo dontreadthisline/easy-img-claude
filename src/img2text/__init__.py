@@ -1,1 +1,0 @@
-"""img2text - Image-to-text bridge for non-vision LLMs."""
