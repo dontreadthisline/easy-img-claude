@@ -11,27 +11,27 @@ class OpenAICompatBackend(BaseBackend):
 
     def __init__(
         self,
-        api_key: str,
-        base_url: str,
+        name: str = "openai-compat",
+        api_key: str = "",
+        base_url: str = "",
         fast_model: str = "gpt-4o-mini",
         detailed_model: str = "gpt-4o",
     ):
+        self._name = name
         self.api_key = api_key
-        self.base_url = base_url.rstrip("/")
+        self.base_url = base_url.rstrip("/") if base_url else ""
         self._fast_model = fast_model
         self._detailed_model = detailed_model
 
     @property
     def name(self) -> str:
-        return "openai-compat"
+        return self._name
 
     @property
     def available_modes(self) -> list[str]:
         return ["fast", "detailed"]
 
     def convert(self, image_path: str, mode: str = "fast") -> str:
-        if not self.api_key:
-            raise ValueError("API key is required. Set OPENAI_API_KEY.")
         if not self.base_url:
             raise ValueError("Base URL is required. Set OPENAI_BASE_URL.")
 

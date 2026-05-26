@@ -26,9 +26,33 @@ def test_get_backend_ollama():
         provider="ollama",
         fast_model="minicpm-v",
     )
-    with mock.patch("img2text.backends.ollama.OllamaBackend._check_ollama", return_value=None):
-        backend = get_backend(config)
-        assert backend.name == "ollama"
+    backend = get_backend(config)
+    assert backend.name == "ollama"
+    assert "11434" in backend.base_url
+
+
+def test_get_backend_vllm():
+    """Test creating vLLM backend from config."""
+    config = BackendConfig(
+        provider="vllm",
+        base_url="http://127.0.0.1:8100/v1",
+    )
+    backend = get_backend(config)
+    assert backend.name == "vllm"
+    assert "8100" in backend.base_url
+
+
+def test_get_backend_openai_compat():
+    """Test creating generic OpenAI-compat backend from config."""
+    config = BackendConfig(
+        provider="openai-compat",
+        api_key="sk-test",
+        base_url="https://api.openai.com/v1",
+        fast_model="gpt-4o-mini",
+    )
+    backend = get_backend(config)
+    assert backend.name == "openai-compat"
+    assert backend._fast_model == "gpt-4o-mini"
 
 
 def test_get_backend_unknown():

@@ -5,79 +5,54 @@ import os
 from img2text.config import BackendConfig
 from img2text.backends.base import BaseBackend
 
+# Provider defaults: name -> (env_var, default_base_url, default_fast_model, default_detailed_model)
+_PROVIDER_DEFAULTS: dict[str, tuple[str, str, str, str]] = {
+    "qwen": ("DASHSCOPE_API_KEY", "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen-vl-plus", "qwen-vl-max"),
+    "zhipu": ("ZHIPUAI_API_KEY", "https://open.bigmodel.cn/api/paas/v4", "glm-4v-flash", "glm-4v"),
+    "moonshot": ("MOONSHOT_API_KEY", "https://api.moonshot.cn/v1", "moonshot-v1-8k-vision-preview", "moonshot-v1-8k-vision-preview"),
+    "stepfun": ("STEPFUN_API_KEY", "https://api.stepfun.com/v1", "step-1v-8b", "step-1v-32b"),
+    "openai-compat": ("OPENAI_API_KEY", "", "gpt-4o-mini", "gpt-4o"),
+    "ollama": ("OLLAMA_HOST", "http://127.0.0.1:11434/v1", "minicpm-v", "minicpm-v"),
+    "vllm": ("VLLM_API_URL", "", "", ""),
+}
+
+
+def _make_openai_compat_backend(name: str, config: BackendConfig) -> BaseBackend:
+    """Create an OpenAICompatBackend for the given provider name."""
+    from img2text.backends.openai_compat import OpenAICompatBackend
+
+    env_var, default_url, default_fast, default_detailed = _PROVIDER_DEFAULTS[name]
+
+    # Resolve base_url: explicit config > env var > default
+    base_url = config.base_url or os.environ.get(env_var, default_url)
+
+    # For ollama, append /v1 to the host if it's just host:port
+    if name == "ollama":
+        base_url = (config.base_url or os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")).rstrip("/") + "/v1"
+
+    return OpenAICompatBackend(
+        name=name,
+        api_key=config.api_key or "not-needed",
+        base_url=base_url,
+        fast_model=config.fast_model or default_fast,
+        detailed_model=config.detailed_model or default_detailed,
+    )
+
 
 def get_backend(config: BackendConfig) -> BaseBackend:
     """Create a backend instance from config."""
     provider = config.provider.lower()
 
-    if provider == "qwen":
-        from img2text.backends.qwen import QwenBackend
-        return QwenBackend(
-            api_key=config.api_key,
-            base_url=config.base_url or "https://dashscope.aliyuncs.com/compatible-mode/v1",
-            fast_model=config.fast_model or "qwen-vl-plus",
-            detailed_model=config.detailed_model or "qwen-vl-max",
-        )
-
-    elif provider == "zhipu":
-        from img2text.backends.zhipu import ZhipuBackend
-        return ZhipuBackend(
-            api_key=config.api_key,
-            base_url=config.base_url or "https://open.bigmodel.cn/api/paas/v4",
-            fast_model=config.fast_model or "glm-4v-flash",
-            detailed_model=config.detailed_model or "glm-4v",
-        )
-
-    elif provider == "moonshot":
-        from img2text.backends.moonshot import MoonshotBackend
-        return MoonshotBackend(
-            api_key=config.api_key,
-            base_url=config.base_url or "https://api.moonshot.cn/v1",
-        )
-
-    elif provider == "stepfun":
-        from img2text.backends.stepfun import StepfunBackend
-        return StepfunBackend(
-            api_key=config.api_key,
-            base_url=config.base_url or "https://api.stepfun.com/v1",
-            fast_model=config.fast_model or "step-1v-8b",
-            detailed_model=config.detailed_model or "step-1v-32b",
-        )
-
-    elif provider == "openai-compat":
-        from img2text.backends.openai_compat import OpenAICompatBackend
-        return OpenAICompatBackend(
-            api_key=config.api_key,
-            base_url=config.base_url,
-            fast_model=config.fast_model or "gpt-4o-mini",
-            detailed_model=config.detailed_model or "gpt-4o",
-        )
-
-    elif provider == "ollama":
-        from img2text.backends.ollama import OllamaBackend
-        return OllamaBackend(
-            model_fast=config.fast_model or "minicpm-v",
-            model_detailed=config.detailed_model or "minicpm-v",
-        )
-
-    elif provider == "vllm":
-        from img2text.backends.openai_compat import OpenAICompatBackend
-        vllm_url = config.base_url or os.environ.get("VLLM_API_URL", "")
-        return OpenAICompatBackend(
-            api_key=config.api_key or "not-needed",
-            base_url=vllm_url,
-            fast_model=config.fast_model or "",
-            detailed_model=config.detailed_model or "",
-        )
-
-    elif provider == "mlx":
+    if provider == "mlx":
         from img2text.backends.mlx import MLXBackend
         return MLXBackend(
             model=config.detailed_model or config.fast_model or "mlx-community/Qwen2-VL-2B-Instruct-bf16",
         )
 
-    else:
-        raise ValueError(f"Unknown backend provider: {provider}")
+    if provider in _PROVIDER_DEFAULTS:
+        return _make_openai_compat_backend(provider, config)
+
+    raise ValueError(f"Unknown backend provider: {provider}")
 
 
 class Converter:
@@ -111,44 +86,43 @@ class Converter:
     @staticmethod
     def _auto_detect() -> BaseBackend:
         """Auto-detect backend from environment variables."""
-        if os.environ.get("DASHSCOPE_API_KEY"):
-            from img2text.backends.qwen import QwenBackend
-            return QwenBackend(api_key=os.environ["DASHSCOPE_API_KEY"])
+        from img2text.backends.openai_compat import OpenAICompatBackend
 
-        if os.environ.get("ZHIPUAI_API_KEY"):
-            from img2text.backends.zhipu import ZhipuBackend
-            return ZhipuBackend(api_key=os.environ["ZHIPUAI_API_KEY"])
+        # Check API key-based providers in priority order
+        for name, (env_var, default_url, fast, detailed) in _PROVIDER_DEFAULTS.items():
+            if name in ("ollama", "vllm", "openai-compat"):
+                continue  # handled separately below
+            api_key = os.environ.get(env_var)
+            if api_key:
+                return OpenAICompatBackend(
+                    name=name,
+                    api_key=api_key,
+                    base_url=default_url,
+                    fast_model=fast,
+                    detailed_model=detailed,
+                )
 
-        if os.environ.get("MOONSHOT_API_KEY"):
-            from img2text.backends.moonshot import MoonshotBackend
-            return MoonshotBackend(api_key=os.environ["MOONSHOT_API_KEY"])
-
-        if os.environ.get("STEPFUN_API_KEY"):
-            from img2text.backends.stepfun import StepfunBackend
-            return StepfunBackend(api_key=os.environ["STEPFUN_API_KEY"])
-
+        # OpenAI-compat requires both API key and base URL
         if os.environ.get("OPENAI_API_KEY") and os.environ.get("OPENAI_BASE_URL"):
-            from img2text.backends.openai_compat import OpenAICompatBackend
             return OpenAICompatBackend(
+                name="openai-compat",
                 api_key=os.environ["OPENAI_API_KEY"],
                 base_url=os.environ["OPENAI_BASE_URL"],
             )
 
+        # vLLM
         if os.environ.get("VLLM_API_URL"):
-            from img2text.backends.openai_compat import OpenAICompatBackend
             return OpenAICompatBackend(
+                name="vllm",
                 api_key="not-needed",
                 base_url=os.environ["VLLM_API_URL"],
             )
 
-        # Fallback: try Ollama on default port
-        from img2text.backends.ollama import OllamaBackend
-        try:
-            backend = OllamaBackend()
-            return backend
-        except RuntimeError:
-            raise RuntimeError(
-                "No image-to-text backend detected. Configure one via:\n"
-                "  img2text config set provider <name>\n"
-                "Or set an API key environment variable (DASHSCOPE_API_KEY, ZHIPUAI_API_KEY, etc.)"
-            )
+        # Fallback: Ollama on default port
+        return OpenAICompatBackend(
+            name="ollama",
+            api_key="ollama",
+            base_url="http://127.0.0.1:11434/v1",
+            fast_model="minicpm-v",
+            detailed_model="minicpm-v",
+        )
