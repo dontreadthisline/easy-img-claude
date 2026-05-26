@@ -159,7 +159,7 @@ class MLXBackend(BaseBackend):
         if self._loaded is None:
             # Set CUDA toolkit path before importing mlx
             cuda_path = _get_cuda_toolkit_path()
-            if cuda_path and "CUDA_PATH" not in os.environ:
+            if cuda_path:
                 os.environ["CUDA_PATH"] = cuda_path
                 os.environ["CUDA_HOME"] = cuda_path
 

@@ -1484,6 +1484,7 @@ mlx-cuda = [
     { name = "mlx-lm", version = "0.30.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "mlx-vlm", version = "0.3.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "nvidia-cuda-nvcc-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nvidia-cuda-runtime-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "torch", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "torchvision", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
@@ -1510,6 +1511,7 @@ requires-dist = [
     { name = "mlx-vlm", marker = "sys_platform == 'linux' and extra == 'mlx-cuda'", specifier = "==0.3.0" },
     { name = "mlx-vlm", marker = "extra == 'mlx'", specifier = ">=0.3" },
     { name = "nvidia-cuda-nvcc-cu12", marker = "extra == 'mlx-cuda'", specifier = ">=12.9.86" },
+    { name = "nvidia-cuda-runtime-cu12", marker = "extra == 'mlx-cuda'", specifier = ">=12.9" },
     { name = "pyyaml", specifier = ">=6" },
     { name = "socksio", specifier = ">=1.0.0" },
     { name = "torch", marker = "extra == 'mlx-cuda'", specifier = ">=2.11.0" },
@@ -2489,6 +2491,14 @@ version = "13.0.96"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2e/24/d1558f3b68b1d26e706813b1d10aa1d785e4698c425af8db8edc3dced472/nvidia_cuda_runtime-13.0.96-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:7f82250d7782aa23b6cfe765ecc7db554bd3c2870c43f3d1821f1d18aebf0548", size = 2243632, upload-time = "2025-10-09T08:55:36.117Z" },
+]
+
+[[package]]
+name = "nvidia-cuda-runtime-cu12"
+version = "12.9.79"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bc/46/a92db19b8309581092a3add7e6fceb4c301a3fd233969856a8cbf042cd3c/nvidia_cuda_runtime_cu12-12.9.79-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:25bba2dfb01d48a9b59ca474a1ac43c6ebf7011f1b0b8cc44f54eb6ac48a96c3", size = 3493179, upload-time = "2025-06-05T20:00:53.735Z" },
 ]
 
 [[package]]
