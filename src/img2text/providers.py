@@ -35,7 +35,12 @@ _PROVIDER_DEFAULTS: dict[str, tuple[str, str, str, str]] = {
         "llava:latest",
         "llava:latest",
     ),
-    "vllm": ("VLLM_API_URL", "http://127.0.0.1:8000/v1", "Qwen/Qwen2.5-VL-3B-Instruct", "Qwen/Qwen2.5-VL-3B-Instruct"),
+    "vllm": (
+        "VLLM_API_URL",
+        "http://127.0.0.1:8000/v1",
+        "Qwen/Qwen2.5-VL-3B-Instruct",
+        "Qwen/Qwen2.5-VL-3B-Instruct",
+    ),
 }
 
 # Provider names that auto-detect via API key env var (handled in priority loop)
