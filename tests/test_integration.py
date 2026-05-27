@@ -33,7 +33,7 @@ def test_list_backends_integration():
     """Test list-backends with real detection (no mocks for env vars)."""
     runner = CliRunner()
 
-    with mock.patch("img2text.detector._probe_port", return_value=False):
+    with mock.patch("img2text.detector.probe_port", return_value=False):
         # All known backends should appear
         result = runner.invoke(main, ["list-backends"])
         assert result.exit_code == 0

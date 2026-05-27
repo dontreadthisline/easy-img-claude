@@ -1,16 +1,25 @@
 """Auto-detect available image-to-text backends."""
 
 import os
-import socket
+
+from img2text.providers import (
+    _PROVIDER_DEFAULTS,
+    _API_KEY_PROVIDERS,
+    MLX_DEFAULT_MODEL,
+    probe_port,
+    OLLAMA_DEFAULT_PORT,
+    VLLM_DEFAULT_PORT,
+)
 
 
-def _probe_port(host: str, port: int, timeout: float = 0.5) -> bool:
-    """Check if a TCP port is open."""
-    try:
-        with socket.create_connection((host, port), timeout=timeout):
-            return True
-    except (socket.timeout, ConnectionRefusedError, OSError):
-        return False
+def _model_list(fast: str, detailed: str) -> list[str]:
+    """Build a human-readable model list from provider defaults."""
+    models = []
+    if fast:
+        models.append(f"{fast} (fast)")
+    if detailed and detailed != fast:
+        models.append(f"{detailed} (detailed)")
+    return models or ["user-configured"]
 
 
 def detect_backends() -> list[dict]:
@@ -21,84 +30,88 @@ def detect_backends() -> list[dict]:
     """
     backends = []
 
-    # Qwen (Tongyi)
-    backends.append({
-        "name": "qwen",
-        "status": "detected" if os.environ.get("DASHSCOPE_API_KEY") else "not_configured",
-        "detail": "DASHSCOPE_API_KEY" if os.environ.get("DASHSCOPE_API_KEY") else "DASHSCOPE_API_KEY not set",
-        "models": ["qwen-vl-plus (fast)", "qwen-vl-max (detailed)"],
-    })
-
-    # Zhipu GLM
-    backends.append({
-        "name": "zhipu",
-        "status": "detected" if os.environ.get("ZHIPUAI_API_KEY") else "not_configured",
-        "detail": "ZHIPUAI_API_KEY" if os.environ.get("ZHIPUAI_API_KEY") else "ZHIPUAI_API_KEY not set",
-        "models": ["glm-4v-flash (fast)", "glm-4v (detailed)"],
-    })
-
-    # Moonshot
-    backends.append({
-        "name": "moonshot",
-        "status": "detected" if os.environ.get("MOONSHOT_API_KEY") else "not_configured",
-        "detail": "MOONSHOT_API_KEY" if os.environ.get("MOONSHOT_API_KEY") else "MOONSHOT_API_KEY not set",
-        "models": ["moonshot-v1-8k-vision-preview"],
-    })
-
-    # Stepfun
-    backends.append({
-        "name": "stepfun",
-        "status": "detected" if os.environ.get("STEPFUN_API_KEY") else "not_configured",
-        "detail": "STEPFUN_API_KEY" if os.environ.get("STEPFUN_API_KEY") else "STEPFUN_API_KEY not set",
-        "models": ["step-1v series"],
-    })
+    # API key-based providers
+    for name in _API_KEY_PROVIDERS:
+        env_var, _, fast, detailed = _PROVIDER_DEFAULTS[name]
+        detected = bool(os.environ.get(env_var))
+        backends.append(
+            {
+                "name": name,
+                "status": "detected" if detected else "not_configured",
+                "detail": env_var if detected else f"{env_var} not set",
+                "models": _model_list(fast, detailed),
+            }
+        )
 
     # OpenAI-compatible
+    _, _, openai_fast, openai_detailed = _PROVIDER_DEFAULTS["openai-compat"]
     openai_compat_detected = bool(
         os.environ.get("OPENAI_API_KEY") and os.environ.get("OPENAI_BASE_URL")
     )
-    backends.append({
-        "name": "openai-compat",
-        "status": "detected" if openai_compat_detected else "not_configured",
-        "detail": "OPENAI_API_KEY + OPENAI_BASE_URL"
-        if openai_compat_detected
-        else "OPENAI_API_KEY and OPENAI_BASE_URL required",
-        "models": ["user-configured"],
-    })
+    backends.append(
+        {
+            "name": "openai-compat",
+            "status": "detected" if openai_compat_detected else "not_configured",
+            "detail": "OPENAI_API_KEY + OPENAI_BASE_URL"
+            if openai_compat_detected
+            else "OPENAI_API_KEY and OPENAI_BASE_URL required",
+            "models": _model_list(openai_fast, openai_detailed),
+        }
+    )
 
     # Ollama
-    ollama_host = os.environ.get("OLLAMA_HOST", "localhost:11434")
-    host, port_str = ollama_host.rsplit(":", 1) if ":" in ollama_host else (ollama_host, "11434")
+    ollama_env, ollama_default_url, ollama_fast, ollama_detailed = _PROVIDER_DEFAULTS[
+        "ollama"
+    ]
+    ollama_host = os.environ.get(ollama_env, f"localhost:{OLLAMA_DEFAULT_PORT}")
+    host, port_str = (
+        ollama_host.rsplit(":", 1)
+        if ":" in ollama_host
+        else (ollama_host, str(OLLAMA_DEFAULT_PORT))
+    )
     port = int(port_str)
-    ollama_detected = _probe_port(host, port)
-    backends.append({
-        "name": "ollama",
-        "status": "detected" if ollama_detected else "not_configured",
-        "detail": f"{ollama_host} reachable" if ollama_detected else f"{ollama_host} not reachable",
-        "models": ["run img2text list-backends to detect models"],
-    })
+    ollama_detected = probe_port(host, port)
+    backends.append(
+        {
+            "name": "ollama",
+            "status": "detected" if ollama_detected else "not_configured",
+            "detail": f"{ollama_host} reachable"
+            if ollama_detected
+            else f"{ollama_host} not reachable",
+            "models": _model_list(ollama_fast, ollama_detailed),
+        }
+    )
 
-    # vLLM (env var or default port 8000)
-    vllm_url = os.environ.get("VLLM_API_URL")
+    # vLLM
+    vllm_env, _, vllm_fast, vllm_detailed = _PROVIDER_DEFAULTS["vllm"]
+    vllm_url = os.environ.get(vllm_env)
     if vllm_url:
         vllm_detected = True
-        vllm_detail = "VLLM_API_URL"
+        vllm_detail = vllm_env
     else:
-        vllm_detected = _probe_port("localhost", 8000)
-        vllm_detail = "localhost:8000 reachable" if vllm_detected else "VLLM_API_URL not set"
-    backends.append({
-        "name": "vllm",
-        "status": "detected" if vllm_detected else "not_configured",
-        "detail": vllm_detail,
-        "models": ["user-configured"],
-    })
+        vllm_detected = probe_port("localhost", VLLM_DEFAULT_PORT)
+        vllm_detail = (
+            f"localhost:{VLLM_DEFAULT_PORT} reachable"
+            if vllm_detected
+            else f"{vllm_env} not set"
+        )
+    backends.append(
+        {
+            "name": "vllm",
+            "status": "detected" if vllm_detected else "not_configured",
+            "detail": vllm_detail,
+            "models": _model_list(vllm_fast, vllm_detailed),
+        }
+    )
 
     # MLX
-    backends.append({
-        "name": "mlx",
-        "status": "not_configured",
-        "detail": "requires explicit config",
-        "models": ["user-configured"],
-    })
+    backends.append(
+        {
+            "name": "mlx",
+            "status": "not_configured",
+            "detail": "requires explicit config",
+            "models": [f"{MLX_DEFAULT_MODEL} (default)"],
+        }
+    )
 
     return backends

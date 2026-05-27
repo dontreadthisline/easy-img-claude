@@ -33,7 +33,7 @@ def test_detect_openai_compat_from_env():
 def test_no_backends_detected():
     """Test that with no env vars, all backends show as not detected."""
     with mock.patch.dict(os.environ, {}, clear=True):
-        with mock.patch("img2text.detector._probe_port", return_value=False):
+        with mock.patch("img2text.detector.probe_port", return_value=False):
             backends = detect_backends()
             detected = [b for b in backends if b["status"] == "detected"]
             assert len(detected) == 0
@@ -42,7 +42,7 @@ def test_no_backends_detected():
 def test_detect_backends_returns_all():
     """Test that all expected backends appear in results."""
     with mock.patch.dict(os.environ, {}, clear=True):
-        with mock.patch("img2text.detector._probe_port", return_value=False):
+        with mock.patch("img2text.detector.probe_port", return_value=False):
             backends = detect_backends()
             names = {b["name"] for b in backends}
             expected = {"qwen", "zhipu", "moonshot", "stepfun", "openai-compat", "ollama", "vllm", "mlx"}

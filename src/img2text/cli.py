@@ -8,13 +8,7 @@ from img2text.config import Config
 from img2text.converter import Converter
 from img2text.detector import detect_backends
 from img2text.hook import run_hook
-
-IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
-MAX_IMAGES = 10
-
-
-def _is_image_file(path: str) -> bool:
-    return os.path.splitext(path)[1].lower() in IMAGE_EXTENSIONS
+from img2text.image_utils import is_image_file, MAX_IMAGES
 
 
 def _expand_path(path: str) -> list[str]:
@@ -22,7 +16,7 @@ def _expand_path(path: str) -> list[str]:
     if os.path.isdir(path):
         return sorted(
             os.path.join(path, f) for f in os.listdir(path)
-            if os.path.isfile(os.path.join(path, f)) and _is_image_file(f)
+            if os.path.isfile(os.path.join(path, f)) and is_image_file(f)
         )[:MAX_IMAGES]
     return [path]
 
@@ -134,6 +128,8 @@ def download_model(backend: str | None, model: str | None):
 
     Model priority: --model argument > config > backend default.
     """
+    from img2text.providers import _PROVIDER_DEFAULTS, MLX_DEFAULT_MODEL
+
     config = Config().load()
 
     # Resolve backend
@@ -145,9 +141,8 @@ def download_model(backend: str | None, model: str | None):
         model = config.detailed_model or config.fast_model
 
     if backend in ("mlx", "vllm"):
-        # HuggingFace download for mlx/vllm
         if not model:
-            model = "mlx-community/Qwen2-VL-2B-Instruct-bf16"
+            model = MLX_DEFAULT_MODEL
             click.echo(f"No model specified, using default: {model}")
 
         click.echo(f"Downloading HuggingFace model: {model}")
@@ -166,9 +161,8 @@ def download_model(backend: str | None, model: str | None):
             raise click.ClickException(f"Failed to download model: {e}")
 
     elif backend == "ollama":
-        # Ollama pull
         if not model:
-            model = "llava"
+            model = _PROVIDER_DEFAULTS["ollama"][2]  # default fast_model
             click.echo(f"No model specified, using default: {model}")
 
         click.echo(f"Pulling Ollama model: {model}")

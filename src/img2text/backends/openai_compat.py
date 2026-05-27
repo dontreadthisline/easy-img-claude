@@ -52,6 +52,6 @@ class OpenAICompatBackend(BaseBackend):
                 data = response.json()
                 return data["choices"][0]["message"]["content"]
         except httpx.HTTPStatusError as e:
-            return f"[OpenAI-compat API error] {e.response.status_code}: {e.response.text[:500]}"
+            return f"[{self._name}] API error ({e.response.status_code}): {e.response.text[:500]}"
         except httpx.RequestError as e:
-            return f"[OpenAI-compat request error] {e}"
+            return f"[{self._name}] request error: {e}"

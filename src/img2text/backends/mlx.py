@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from img2text.backends.base import BaseBackend
+from img2text.image_utils import DESCRIBE_PROMPT
 
 
 def _get_cuda_toolkit_path() -> str | None:
@@ -177,11 +178,7 @@ class MLXBackend(BaseBackend):
         if mode == "fast":
             prompt = "Describe this image concisely."
         else:
-            prompt = (
-                "Describe this image in detail. Include all text content (if any), "
-                "layout, visual elements, colors, and any notable details. "
-                "If it's a screenshot of code or terminal, include the code/text verbatim."
-            )
+            prompt = DESCRIBE_PROMPT
 
         try:
             from mlx_vlm.generate import generate
@@ -199,6 +196,6 @@ class MLXBackend(BaseBackend):
             )
             return result.text.strip()
         except ImportError:
-            return "[Error] mlx-vlm not found. Install with: uv sync --extra mlx-cuda"
+            return "[mlx] mlx-vlm not found. Install with: uv sync --extra mlx-cuda"
         except Exception as e:
-            return f"[MLX error] {e}"
+            return f"[mlx] {e}"

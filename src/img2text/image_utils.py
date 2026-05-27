@@ -2,7 +2,17 @@
 
 import base64
 import mimetypes
+import os
 from pathlib import Path
+
+
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
+MAX_IMAGES = 10
+
+
+def is_image_file(path: str) -> bool:
+    """Check if a path has a recognized image extension."""
+    return os.path.splitext(path)[1].lower() in IMAGE_EXTENSIONS
 
 
 def encode_image(image_path: str) -> str:

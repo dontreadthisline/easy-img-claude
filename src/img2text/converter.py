@@ -4,37 +4,14 @@ import os
 
 from img2text.config import BackendConfig
 from img2text.backends.base import BaseBackend
-
-# Provider defaults: name -> (env_var, default_base_url, default_fast_model, default_detailed_model)
-_PROVIDER_DEFAULTS: dict[str, tuple[str, str, str, str]] = {
-    "qwen": (
-        "DASHSCOPE_API_KEY",
-        "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        "qwen-vl-plus",
-        "qwen-vl-max",
-    ),
-    "zhipu": (
-        "ZHIPUAI_API_KEY",
-        "https://open.bigmodel.cn/api/paas/v4",
-        "glm-4v-flash",
-        "glm-4v",
-    ),
-    "moonshot": (
-        "MOONSHOT_API_KEY",
-        "https://api.moonshot.cn/v1",
-        "moonshot-v1-8k-vision-preview",
-        "moonshot-v1-8k-vision-preview",
-    ),
-    "stepfun": (
-        "STEPFUN_API_KEY",
-        "https://api.stepfun.com/v1",
-        "step-1v-8b",
-        "step-1v-32b",
-    ),
-    "openai-compat": ("OPENAI_API_KEY", "", "gpt-4o-mini", "gpt-4o"),
-    "ollama": ("OLLAMA_HOST", "http://127.0.0.1:11434/v1", "minicpm-v", "minicpm-v"),
-    "vllm": ("VLLM_API_URL", "", "", ""),
-}
+from img2text.providers import (
+    _PROVIDER_DEFAULTS,
+    _API_KEY_PROVIDERS,
+    MLX_DEFAULT_MODEL,
+    probe_port,
+    OLLAMA_DEFAULT_PORT,
+    VLLM_DEFAULT_PORT,
+)
 
 
 def _make_openai_compat_backend(name: str, config: BackendConfig) -> BaseBackend:
@@ -43,26 +20,13 @@ def _make_openai_compat_backend(name: str, config: BackendConfig) -> BaseBackend
 
     env_var, default_url, default_fast, default_detailed = _PROVIDER_DEFAULTS[name]
 
-    # Resolve base_url: explicit config > env var > default
-    if name == "vllm":
-        base_url = config.base_url or os.environ.get("VLLM_API_URL", "")
-        if not base_url:
-            import socket
-            try:
-                with socket.create_connection(("localhost", 8000), timeout=0.5):
-                    base_url = "http://localhost:8000/v1"
-            except (socket.timeout, ConnectionRefusedError, OSError):
-                pass
-    elif name == "ollama":
-        base_url = (
-            config.base_url or os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
-        ).rstrip("/") + "/v1"
+    # Resolve base_url: explicit config > default
+    if name in ("ollama", "vllm"):
+        base_url = config.base_url or os.environ.get(env_var, default_url)
     else:
         base_url = config.base_url or default_url
-
     # Resolve api_key: explicit config > env var
     api_key = config.api_key or os.environ.get(env_var, "not-needed")
-
     return OpenAICompatBackend(
         name=name,
         api_key=api_key,
@@ -80,9 +44,7 @@ def get_backend(config: BackendConfig) -> BaseBackend:
         from img2text.backends.mlx import MLXBackend
 
         return MLXBackend(
-            model=config.detailed_model
-            or config.fast_model
-            or "mlx-community/Qwen2-VL-2B-Instruct-bf16",
+            model=config.detailed_model or config.fast_model or MLX_DEFAULT_MODEL,
         )
 
     if provider in _PROVIDER_DEFAULTS:
@@ -121,52 +83,39 @@ class Converter:
 
     @staticmethod
     def _auto_detect() -> BaseBackend:
-        """Auto-detect backend from environment variables."""
-        from img2text.backends.openai_compat import OpenAICompatBackend
+        """Auto-detect backend from environment variables.
 
-        # Check API key-based providers in priority order
-        for name, (env_var, default_url, fast, detailed) in _PROVIDER_DEFAULTS.items():
-            if name in ("ollama", "vllm", "openai-compat"):
-                continue  # handled separately below
-            api_key = os.environ.get(env_var)
-            if api_key:
-                return OpenAICompatBackend(
-                    name=name,
-                    api_key=api_key,
-                    base_url=default_url,
-                    fast_model=fast,
-                    detailed_model=detailed,
-                )
+        Each branch only determines the provider name, then delegates
+        to get_backend() for canonical construction.
+        """
+        # API key-based providers in priority order
+        for name in _API_KEY_PROVIDERS:
+            env_var = _PROVIDER_DEFAULTS[name][0]
+            if os.environ.get(env_var):
+                return get_backend(BackendConfig(provider=name))
 
         # OpenAI-compat requires both API key and base URL
         if os.environ.get("OPENAI_API_KEY") and os.environ.get("OPENAI_BASE_URL"):
-            return OpenAICompatBackend(
-                name="openai-compat",
-                api_key=os.environ["OPENAI_API_KEY"],
-                base_url=os.environ["OPENAI_BASE_URL"],
+            return get_backend(
+                BackendConfig(
+                    provider="openai-compat",
+                    base_url=os.environ["OPENAI_BASE_URL"],
+                )
             )
 
-        # vLLM (env var or default port 8000)
-        vllm_url = os.environ.get("VLLM_API_URL")
-        if not vllm_url:
-            import socket
-            try:
-                with socket.create_connection(("localhost", 8000), timeout=0.5):
-                    vllm_url = "http://localhost:8000/v1"
-            except (socket.timeout, ConnectionRefusedError, OSError):
-                pass
-        if vllm_url:
-            return OpenAICompatBackend(
-                name="vllm",
-                api_key="not-needed",
-                base_url=vllm_url,
-            )
+        # vLLM / Ollama (env var or probe default port)
+        for name in ("vllm", "ollama"):
+            env_var = _PROVIDER_DEFAULTS[name][0]
+            url = os.environ.get(env_var)
+            if not url:
+                default_port = (
+                    VLLM_DEFAULT_PORT if name == "vllm" else OLLAMA_DEFAULT_PORT
+                )
+                if probe_port("localhost", default_port):
+                    url = f"http://localhost:{default_port}"
+            if url:
+                url = url.rstrip("/") + "/v1"
+                return get_backend(BackendConfig(provider=name, base_url=url))
 
-        # Fallback: Ollama on default port
-        return OpenAICompatBackend(
-            name="ollama",
-            api_key="ollama",
-            base_url="http://127.0.0.1:11434/v1",
-            fast_model="minicpm-v",
-            detailed_model="minicpm-v",
-        )
+        # Nothing detected — fallback to ollama default
+        return get_backend(BackendConfig(provider="ollama"))

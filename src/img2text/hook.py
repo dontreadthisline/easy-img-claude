@@ -7,9 +7,9 @@ import json
 import os
 import re
 import sys
-from pathlib import Path
 
-IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
+from img2text.image_utils import is_image_file
+
 MAX_IMAGES = 3
 
 
@@ -62,15 +62,12 @@ def _resolve_path(path: str) -> list[str]:
         return sorted(
             os.path.join(path, f)
             for f in os.listdir(path)
-            if _is_image(f)
+            if is_image_file(f)
         )
-    elif _is_image(path) and os.path.isfile(path):
+    elif is_image_file(path) and os.path.isfile(path):
         return [path]
     return []
 
-
-def _is_image(path: str) -> bool:
-    return os.path.splitext(path)[1].lower() in IMAGE_EXTENSIONS
 
 
 def run_hook():
