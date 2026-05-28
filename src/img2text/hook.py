@@ -7,8 +7,17 @@ import json
 import os
 import re
 import sys
+import time
 
 from img2text.image_utils import is_image_file
+
+DEBUG_FILE = os.path.expanduser("~/.img2text_hook_debug.log")
+
+def _debug(msg: str):
+    """Write debug message to log file."""
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    with open(DEBUG_FILE, "a") as f:
+        f.write(f"[{timestamp}] {msg}\n")
 
 MAX_IMAGES = 3
 
@@ -72,34 +81,69 @@ def _resolve_path(path: str) -> list[str]:
 
 def run_hook():
     """Read UserPromptSubmit hook input from stdin, convert images, print result."""
-    input_data = json.load(sys.stdin)
-    prompt = input_data.get("prompt", "")
-    session_id = input_data.get("session_id", "")
+    _debug("=== Hook started ===")
 
-    paths = find_image_paths(prompt, session_id)
-    if not paths:
+    try:
+        input_data = json.load(sys.stdin)
+        _debug(f"Received input data with keys: {list(input_data.keys())}")
+    except Exception as e:
+        _debug(f"Failed to parse stdin JSON: {e}")
         print(json.dumps({}))
         return
 
-    from img2text.config import Config
-    from img2text.converter import Converter
+    prompt = input_data.get("prompt", "")
+    session_id = input_data.get("session_id", "")
+    _debug(f"Prompt length: {len(prompt)}, session_id: {session_id}")
+    _debug(f"Prompt preview (first 200 chars): {prompt[:200]!r}")
 
-    config = Config().load()
-    converter = Converter(config)
+    paths = find_image_paths(prompt, session_id)
+    _debug(f"Found image paths: {paths}")
 
-    descriptions = []
-    for path in paths[:MAX_IMAGES]:
-        try:
-            desc = converter.convert(path, mode="fast")
-        except Exception as e:
-            desc = f"[img2text error] {e}"
-        descriptions.append(f"[Image: {os.path.basename(path)}]\n{desc}")
+    if not paths:
+        _debug("No images found, returning empty output")
+        print(json.dumps({}))
+        return
 
-    context = "\n\n---\n".join(descriptions)
-    output = {
-        "hookSpecificOutput": {
-            "hookEventName": "UserPromptSubmit",
-            "additionalContext": context,
+    try:
+        from img2text.config import Config
+        from img2text.converter import Converter
+
+        _debug("Loading config...")
+        config = Config().load()
+        _debug(f"Config loaded: provider={config.provider}")
+
+        converter = Converter(config)
+
+        descriptions = []
+        for path in paths[:MAX_IMAGES]:
+            _debug(f"Converting image: {path}")
+            try:
+                start = time.time()
+                desc = converter.convert(path, mode="fast")
+                elapsed = time.time() - start
+                _debug(f"Conversion succeeded in {elapsed:.2f}s, result length: {len(desc)}")
+            except Exception as e:
+                _debug(f"Conversion FAILED: {type(e).__name__}: {e}")
+                desc = f"[img2text error] {e}"
+            descriptions.append(f"[Image: {os.path.basename(path)}]\n{desc}")
+
+        context = "\n\n---\n".join(descriptions)
+
+        # Strip [Image #N] placeholders from prompt to prevent sending to non-vision models
+        clean_prompt = re.sub(r"\[Image #\d+\]", "", prompt).strip()
+
+        output = {
+            "prompt": clean_prompt,  # Modified prompt without image placeholders
+            "hookSpecificOutput": {
+                "hookEventName": "UserPromptSubmit",
+                "additionalContext": context,
+            }
         }
-    }
-    print(json.dumps(output))
+        _debug(f"Output prepared, context length: {len(context)}")
+        _debug(f"Original prompt: {prompt[:100]!r}")
+        _debug(f"Cleaned prompt: {clean_prompt[:100]!r}")
+        _debug("=== Hook finished successfully ===")
+        print(json.dumps(output))
+    except Exception as e:
+        _debug(f"Hook FAILED: {type(e).__name__}: {e}")
+        print(json.dumps({}))

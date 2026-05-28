@@ -6,7 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "img2text hook-run"
+            "command": "img2text hook-run",
+            "timeout": 60
           }
         ]
       }

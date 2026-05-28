@@ -2,10 +2,12 @@
 
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
+
+from img2text.providers import _PROVIDER_DEFAULTS
 
 
 @dataclass
@@ -17,6 +19,22 @@ class BackendConfig:
     base_url: str = ""
     fast_model: str = ""
     detailed_model: str = ""
+
+    def get_fast_model(self) -> str:
+        """Get fast model, falling back to provider default."""
+        if self.fast_model:
+            return self.fast_model
+        if self.provider in _PROVIDER_DEFAULTS:
+            return _PROVIDER_DEFAULTS[self.provider][2]
+        return ""
+
+    def get_detailed_model(self) -> str:
+        """Get detailed model, falling back to provider default."""
+        if self.detailed_model:
+            return self.detailed_model
+        if self.provider in _PROVIDER_DEFAULTS:
+            return _PROVIDER_DEFAULTS[self.provider][3]
+        return ""
 
 
 DEFAULT_CONFIG_PATH = Path.home() / ".config" / "img2text" / "config.yaml"

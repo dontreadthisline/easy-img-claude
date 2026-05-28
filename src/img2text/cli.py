@@ -75,12 +75,26 @@ def config_group():
 @config_group.command(name="show")
 def config_show():
     """Show current configuration."""
+    from img2text.providers import _PROVIDER_DEFAULTS
+
     config = Config().load()
     click.echo(f"provider: {config.provider or '(auto-detect)'}")
     click.echo(f"api_key: {'***' if config.api_key else '(not set)'}")
     click.echo(f"base_url: {config.base_url or '(default)'}")
-    click.echo(f"fast_model: {config.fast_model or '(default)'}")
-    click.echo(f"detailed_model: {config.detailed_model or '(default)'}")
+
+    # Show resolved models (with defaults)
+    fast = config.get_fast_model()
+    detailed = config.get_detailed_model()
+    if config.provider in _PROVIDER_DEFAULTS:
+        default_fast = _PROVIDER_DEFAULTS[config.provider][2]
+        default_detailed = _PROVIDER_DEFAULTS[config.provider][3]
+        fast_label = f"{fast}" + (" (default)" if fast == default_fast else "")
+        detailed_label = f"{detailed}" + (" (default)" if detailed == default_detailed else "")
+    else:
+        fast_label = fast or "(none)"
+        detailed_label = detailed or "(none)"
+    click.echo(f"fast_model: {fast_label}")
+    click.echo(f"detailed_model: {detailed_label}")
 
 
 VALID_KEYS = {"provider", "api_key", "base_url", "fast_model", "detailed_model"}
@@ -91,9 +105,11 @@ VALID_KEYS = {"provider", "api_key", "base_url", "fast_model", "detailed_model"}
 def config_set(args: tuple[str]):
     """Set one or more configuration values.
 
+    When switching provider, models are reset to use the new provider's defaults.
+
     Examples:
-      img2text config set provider vllm
-      img2text config set provider vllm fast_model Qwen/Qwen2.5-VL-3B-Instruct
+      img2text config set provider moonshot
+      img2text config set provider ollama fast_model llava:13b
     """
     if len(args) == 0:
         raise click.ClickException("No arguments provided.")
@@ -105,13 +121,28 @@ def config_set(args: tuple[str]):
 
     cfg = Config()
     config = cfg.load()
+
+    # Parse args into dict
+    changes = {}
     for i in range(0, len(args), 2):
         key = args[i]
         value = args[i + 1]
         if key not in VALID_KEYS:
             raise click.ClickException(f"Unknown config key: {key}. Valid keys: {', '.join(sorted(VALID_KEYS))}")
+        changes[key] = value
+
+    # If provider is changing, reset models to use new provider's defaults
+    if "provider" in changes and changes["provider"] != config.provider:
+        config.fast_model = ""
+        config.detailed_model = ""
+        click.echo(f"Switched to {changes['provider']}, using default models")
+
+    # Apply all changes
+    for key, value in changes.items():
         setattr(config, key, value)
-        click.echo(f"Set {key} = {value}")
+        if key not in ("provider",):  # provider change already logged
+            click.echo(f"Set {key} = {value}")
+
     cfg.save(config)
 
 

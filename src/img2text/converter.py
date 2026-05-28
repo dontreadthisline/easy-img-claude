@@ -18,7 +18,7 @@ def _make_openai_compat_backend(name: str, config: BackendConfig) -> BaseBackend
     """Create an OpenAICompatBackend for the given provider name."""
     from img2text.backends.openai_compat import OpenAICompatBackend
 
-    env_var, default_url, default_fast, default_detailed = _PROVIDER_DEFAULTS[name]
+    env_var, default_url, _, _ = _PROVIDER_DEFAULTS[name]
 
     # Resolve base_url: explicit config > default
     if name in ("ollama", "vllm"):
@@ -31,8 +31,8 @@ def _make_openai_compat_backend(name: str, config: BackendConfig) -> BaseBackend
         name=name,
         api_key=api_key,
         base_url=base_url,
-        fast_model=config.fast_model or default_fast,
-        detailed_model=config.detailed_model or default_detailed,
+        fast_model=config.get_fast_model(),
+        detailed_model=config.get_detailed_model(),
     )
 
 
