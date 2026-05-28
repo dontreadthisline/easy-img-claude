@@ -342,3 +342,10 @@ const afterCode = `const add = (a, b) => a + b;`;
     }
   }
 </style>
+
+<style is:global>
+  /* Hide the default Starlight page title on the splash landing page */
+  html:not([data-has-sidebar]) .content-panel:has(#_top) {
+    display: none;
+  }
+</style>
