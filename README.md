@@ -2,6 +2,8 @@
 
 让非视觉模型在 Claude Code 中"看到"图片。
 
+文档: [dontreadthisline.github.io/easy-img-claude](https://dontreadthisline.github.io/easy-img-claude/)
+
 ## 安装
 
 ### macOS
