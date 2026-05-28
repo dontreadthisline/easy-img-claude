@@ -5,3 +5,6 @@ __pycache__/
 tmp/
 .agents/
 .claude/skills
+node_modules/
+.astro/
+dist/
