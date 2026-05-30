@@ -9,6 +9,7 @@ from img2text.providers import (
     probe_port,
     OLLAMA_DEFAULT_PORT,
     VLLM_DEFAULT_PORT,
+    LLAMACPP_DEFAULT_PORT,
 )
 
 
@@ -101,6 +102,28 @@ def detect_backends() -> list[dict]:
             "status": "detected" if vllm_detected else "not_configured",
             "detail": vllm_detail,
             "models": _model_list(vllm_fast, vllm_detailed),
+        }
+    )
+
+    # llama.cpp
+    llamacpp_env, _, llamacpp_fast, llamacpp_detailed = _PROVIDER_DEFAULTS["llamacpp"]
+    llamacpp_url = os.environ.get(llamacpp_env)
+    if llamacpp_url:
+        llamacpp_detected = True
+        llamacpp_detail = llamacpp_env
+    else:
+        llamacpp_detected = probe_port("localhost", LLAMACPP_DEFAULT_PORT)
+        llamacpp_detail = (
+            f"localhost:{LLAMACPP_DEFAULT_PORT} reachable"
+            if llamacpp_detected
+            else f"{llamacpp_env} not set"
+        )
+    backends.append(
+        {
+            "name": "llamacpp",
+            "status": "detected" if llamacpp_detected else "not_configured",
+            "detail": llamacpp_detail,
+            "models": _model_list(llamacpp_fast, llamacpp_detailed),
         }
     )
 

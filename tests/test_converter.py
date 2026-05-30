@@ -78,6 +78,51 @@ def test_converter_convert():
         assert result == "A description."
 
 
+def test_get_backend_llamacpp():
+    """Test creating llamacpp backend from config (server mode)."""
+    config = BackendConfig(
+        provider="llamacpp",
+        fast_model="qwen2.5-vl",
+    )
+    backend = get_backend(config)
+    assert backend.name == "llamacpp"
+    assert "8080" in backend.base_url
+
+
+def test_get_backend_llamacpp_sdk():
+    """Test creating llamacpp-sdk backend."""
+    with mock.patch.dict(
+        os.environ,
+        {"LLAMACPP_MODEL": "/tmp/model.gguf", "LLAMACPP_MMPROJ": "/tmp/mmproj.gguf"},
+    ):
+        config = BackendConfig(provider="llamacpp-sdk")
+        backend = get_backend(config)
+        assert backend.name == "llamacpp-sdk"
+        assert backend._model_path == "/tmp/model.gguf"
+        assert backend._mmproj_path == "/tmp/mmproj.gguf"
+
+
+def test_get_backend_llamacpp_sdk_missing_model():
+    """Test that llamacpp-sdk raises without LLAMACPP_MODEL."""
+    with mock.patch.dict(os.environ, {}, clear=True):
+        config = BackendConfig(provider="llamacpp-sdk")
+        with pytest.raises(ValueError, match="LLAMACPP_MODEL"):
+            get_backend(config)
+
+
+def test_get_backend_llamacpp_sdk_config_override():
+    """Test llamacpp-sdk paths from config override env vars."""
+    config = BackendConfig(
+        provider="llamacpp-sdk",
+        fast_model="/cfg/model.gguf",
+        detailed_model="/cfg/mmproj.gguf",
+    )
+    with mock.patch.dict(os.environ, {}, clear=True):
+        backend = get_backend(config)
+        assert backend._model_path == "/cfg/model.gguf"
+        assert backend._mmproj_path == "/cfg/mmproj.gguf"
+
+
 def test_converter_resolve_backend_auto():
     """Test auto-resolving backend when provider is empty."""
     config = BackendConfig()  # empty

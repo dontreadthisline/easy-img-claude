@@ -147,15 +147,17 @@ def config_set(args: tuple[str]):
 
 
 @main.command(name="download-model")
-@click.option("--backend", default=None, type=click.Choice(["mlx", "vllm", "ollama"]),
+@click.option("--backend", default=None, type=click.Choice(["mlx", "vllm", "ollama", "llamacpp"]),
               help="Backend type (default: auto-detect from config or mlx)")
 @click.option("--model", default=None, help="Model to download")
-def download_model(backend: str | None, model: str | None):
+@click.option("--filename", default=None, help="Specific GGUF file to download (llamacpp only)")
+def download_model(backend: str | None, model: str | None, filename: str | None):
     """Download a model for local inference.
 
     Backends:
-    - mlx/vllm: Download from HuggingFace Hub
+    - mlx/vllm: Download from HuggingFace Hub (snapshot)
     - ollama: Pull model via ollama CLI
+    - llamacpp: Download GGUF file(s) from HuggingFace Hub
 
     Model priority: --model argument > config > backend default.
     """
@@ -163,9 +165,11 @@ def download_model(backend: str | None, model: str | None):
 
     config = Config().load()
 
+    _HUGGINGFACE_BACKENDS = {"mlx", "vllm", "llamacpp"}
+
     # Resolve backend
     if not backend:
-        backend = config.provider if config.provider in ("mlx", "vllm", "ollama") else "mlx"
+        backend = config.provider if config.provider in _HUGGINGFACE_BACKENDS | {"ollama"} else "mlx"
 
     # Resolve model
     if not model:
@@ -190,6 +194,46 @@ def download_model(backend: str | None, model: str | None):
             )
         except Exception as e:
             raise click.ClickException(f"Failed to download model: {e}")
+
+    elif backend == "llamacpp":
+        if not model:
+            model = "mys/ggml_llava-v1.5-7b"
+            click.echo(f"No model specified, using default: {model}")
+
+        try:
+            from huggingface_hub import hf_hub_download, list_repo_files
+        except ImportError:
+            raise click.ClickException(
+                "huggingface_hub not installed. Run: uv sync --extra vllm"
+            )
+
+        if filename:
+            click.echo(f"Downloading {filename} from {model}...")
+            path = hf_hub_download(repo_id=model, filename=filename)
+            click.echo(click.style(f"Model downloaded to: {path}", fg="green"))
+        else:
+            # Download the most common quantization (Q4_K_M) if available,
+            # otherwise download all GGUF files
+            click.echo(f"Listing files in {model}...")
+            try:
+                files = list_repo_files(model)
+                gguf_files = sorted(f for f in files if f.endswith(".gguf"))
+                if not gguf_files:
+                    raise click.ClickException(f"No GGUF files found in {model}")
+
+                # Prefer Q4_K quantization, exclude mmproj (vision encoder)
+                main_ggufs = [f for f in gguf_files if "mmproj" not in f.lower()]
+                preferred = [f for f in main_ggufs if "q4_k" in f.lower()]
+                targets = preferred or main_ggufs
+
+                if len(targets) > 1:
+                    click.echo(f"Found {len(targets)} GGUF file(s)")
+                for f in targets:
+                    click.echo(f"Downloading {f}...")
+                    path = hf_hub_download(repo_id=model, filename=f)
+                    click.echo(click.style(f"Downloaded: {path}", fg="green"))
+            except Exception as e:
+                raise click.ClickException(f"Failed to download model: {e}")
 
     elif backend == "ollama":
         if not model:

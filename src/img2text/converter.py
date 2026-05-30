@@ -7,10 +7,12 @@ from img2text.backends.base import BaseBackend
 from img2text.providers import (
     _PROVIDER_DEFAULTS,
     _API_KEY_PROVIDERS,
+    _LOCAL_BACKENDS,
     MLX_DEFAULT_MODEL,
     probe_port,
     OLLAMA_DEFAULT_PORT,
     VLLM_DEFAULT_PORT,
+    LLAMACPP_DEFAULT_PORT,
 )
 
 
@@ -20,8 +22,8 @@ def _make_openai_compat_backend(name: str, config: BackendConfig) -> BaseBackend
 
     env_var, default_url, _, _ = _PROVIDER_DEFAULTS[name]
 
-    # Resolve base_url: explicit config > default
-    if name in ("ollama", "vllm"):
+    # Resolve base_url: explicit config > default (local backends also check env var at runtime)
+    if name in _LOCAL_BACKENDS:
         base_url = config.base_url or os.environ.get(env_var, default_url)
     else:
         base_url = config.base_url or default_url
@@ -45,6 +47,20 @@ def get_backend(config: BackendConfig) -> BaseBackend:
 
         return MLXBackend(
             model=config.detailed_model or config.fast_model or MLX_DEFAULT_MODEL,
+        )
+
+    if provider == "llamacpp-sdk":
+        from img2text.backends.llamacpp_sdk import LlamaCppSdkBackend
+
+        model_path = config.get_fast_model() or os.environ.get("LLAMACPP_MODEL", "")
+        mmproj_path = config.get_detailed_model() or os.environ.get("LLAMACPP_MMPROJ", "")
+        if not model_path:
+            raise ValueError("LLAMACPP_MODEL env var or fast_model config is required for llamacpp-sdk")
+        if not mmproj_path:
+            raise ValueError("LLAMACPP_MMPROJ env var or detailed_model config is required for llamacpp-sdk")
+        return LlamaCppSdkBackend(
+            model_path=model_path,
+            mmproj_path=mmproj_path,
         )
 
     if provider in _PROVIDER_DEFAULTS:
@@ -103,14 +119,17 @@ class Converter:
                 )
             )
 
-        # vLLM / Ollama (env var or probe default port)
-        for name in ("vllm", "ollama"):
+        # vLLM / Ollama / llama.cpp (env var or probe default port)
+        _LOCAL_PORT: dict[str, int] = {
+            "ollama": OLLAMA_DEFAULT_PORT,
+            "vllm": VLLM_DEFAULT_PORT,
+            "llamacpp": LLAMACPP_DEFAULT_PORT,
+        }
+        for name in ("vllm", "ollama", "llamacpp"):
             env_var = _PROVIDER_DEFAULTS[name][0]
             url = os.environ.get(env_var)
             if not url:
-                default_port = (
-                    VLLM_DEFAULT_PORT if name == "vllm" else OLLAMA_DEFAULT_PORT
-                )
+                default_port = _LOCAL_PORT[name]
                 if probe_port("localhost", default_port):
                     url = f"http://localhost:{default_port}"
             if url:

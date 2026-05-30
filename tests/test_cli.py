@@ -3,7 +3,7 @@ from pathlib import Path
 from unittest import mock
 
 from click.testing import CliRunner
-from img2text.cli import main, convert, list_backends, config_show, config_set
+from img2text.cli import main, convert, list_backends, config_show, config_set, download_model
 from img2text.config import BackendConfig
 
 
@@ -85,3 +85,71 @@ def test_config_set():
         result = runner.invoke(config_set, ["provider", "ollama"])
         assert result.exit_code == 0
         mock_config.save.assert_called_once()
+
+
+def test_download_model_help():
+    """Test download-model help shows llamacpp option."""
+    runner = CliRunner()
+    result = runner.invoke(main, ["download-model", "--help"])
+    assert result.exit_code == 0
+    assert "llamacpp" in result.output
+    assert "--filename" in result.output
+
+
+def test_download_model_llamacpp_default():
+    """Test download-model with llamacpp backend uses default repo."""
+    runner = CliRunner()
+
+    with mock.patch("img2text.cli.Config") as mock_config_class:
+        mock_config = mock.MagicMock()
+        mock_config.load.return_value = BackendConfig()
+        mock_config_class.return_value = mock_config
+
+        with mock.patch("huggingface_hub.hf_hub_download") as mock_hf_download:
+            mock_hf_download.return_value = "/cache/model.gguf"
+            with mock.patch("huggingface_hub.list_repo_files") as mock_list:
+                mock_list.return_value = ["ggml-model-f16.gguf", "ggml-model-q4_k.gguf"]
+
+                result = runner.invoke(download_model, ["--backend", "llamacpp"])
+                assert result.exit_code == 0
+                assert "Downloading" in result.output
+
+
+def test_download_model_llamacpp_with_filename():
+    """Test download-model with llamacpp backend and explicit filename."""
+    runner = CliRunner()
+
+    with mock.patch("img2text.cli.Config") as mock_config_class:
+        mock_config = mock.MagicMock()
+        mock_config.load.return_value = BackendConfig()
+        mock_config_class.return_value = mock_config
+
+        with mock.patch("huggingface_hub.hf_hub_download") as mock_hf_download:
+            mock_hf_download.return_value = "/cache/model.gguf"
+
+            result = runner.invoke(
+                download_model,
+                ["--backend", "llamacpp", "--model", "mys/ggml_llava-v1.5-7b", "--filename", "ggml-model-q4_k.gguf"],
+            )
+            assert result.exit_code == 0
+            mock_hf_download.assert_called_once_with(
+                repo_id="mys/ggml_llava-v1.5-7b",
+                filename="ggml-model-q4_k.gguf",
+            )
+
+
+def test_download_model_llamacpp_no_gguf():
+    """Test download-model errors when repo has no GGUF files."""
+    runner = CliRunner()
+
+    with mock.patch("img2text.cli.Config") as mock_config_class:
+        mock_config = mock.MagicMock()
+        mock_config.load.return_value = BackendConfig()
+        mock_config_class.return_value = mock_config
+
+        with mock.patch("huggingface_hub.list_repo_files") as mock_list:
+            mock_list.return_value = ["readme.md", "config.json"]
+
+            result = runner.invoke(download_model, ["--backend", "llamacpp", "--model", "some/repo"])
+            assert result.exit_code != 0
+            assert "No GGUF files" in result.output

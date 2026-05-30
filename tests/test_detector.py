@@ -39,11 +39,29 @@ def test_no_backends_detected():
             assert len(detected) == 0
 
 
+def test_detect_llamacpp_from_port():
+    """Test detecting llamacpp when port 8080 is open."""
+    with mock.patch.dict(os.environ, {}, clear=True):
+        with mock.patch("img2text.detector.probe_port") as mock_probe:
+            mock_probe.side_effect = lambda host, port: port == 8080
+            backends = detect_backends()
+            assert any(b["name"] == "llamacpp" and b["status"] == "detected" for b in backends)
+
+
+def test_detect_llamacpp_from_env():
+    """Test detecting llamacpp from LLAMACPP_API_URL env var."""
+    with mock.patch.dict(os.environ, {"LLAMACPP_API_URL": "http://10.0.0.1:8080"}, clear=True):
+        with mock.patch("img2text.detector.probe_port", return_value=False):
+            backends = detect_backends()
+            detected = [b for b in backends if b["name"] == "llamacpp" and b["status"] == "detected"]
+            assert len(detected) == 1
+
+
 def test_detect_backends_returns_all():
     """Test that all expected backends appear in results."""
     with mock.patch.dict(os.environ, {}, clear=True):
         with mock.patch("img2text.detector.probe_port", return_value=False):
             backends = detect_backends()
             names = {b["name"] for b in backends}
-            expected = {"qwen", "zhipu", "moonshot", "stepfun", "openai-compat", "ollama", "vllm", "mlx"}
+            expected = {"qwen", "zhipu", "moonshot", "stepfun", "openai-compat", "ollama", "vllm", "llamacpp", "mlx"}
             assert expected.issubset(names)

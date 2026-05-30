@@ -41,6 +41,12 @@ _PROVIDER_DEFAULTS: dict[str, tuple[str, str, str, str]] = {
         "Qwen/Qwen2.5-VL-3B-Instruct",
         "Qwen/Qwen2.5-VL-3B-Instruct",
     ),
+    "llamacpp": (
+        "LLAMACPP_API_URL",
+        "http://127.0.0.1:8080/v1",
+        "llava-v1.5-7b",
+        "llava-v1.5-7b",
+    ),
 }
 
 # Provider names that auto-detect via API key env var (handled in priority loop)
@@ -48,8 +54,12 @@ _API_KEY_PROVIDERS = ["qwen", "zhipu", "moonshot", "stepfun"]
 
 MLX_DEFAULT_MODEL = "mlx-community/Qwen2-VL-2B-Instruct-bf16"
 
+# Local backends that check env var at runtime in addition to config
+_LOCAL_BACKENDS = {"ollama", "vllm", "llamacpp"}
+
 OLLAMA_DEFAULT_PORT = 11434
 VLLM_DEFAULT_PORT = 8000
+LLAMACPP_DEFAULT_PORT = 8080
 
 
 def probe_port(host: str, port: int, timeout: float = 0.5) -> bool:
