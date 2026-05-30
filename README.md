@@ -21,6 +21,12 @@ uv tool install git+https://github.com/dontreadthisline/easy-img-claude.git \
 uv tool install git+https://github.com/dontreadthisline/easy-img-claude.git --with vllm
 ```
 
+如需 llama.cpp SDK 模式（进程内推理），追加 `--with llama-cpp-python`：
+
+```bash
+uv tool install git+https://github.com/dontreadthisline/easy-img-claude.git --with vllm --with llama-cpp-python
+```
+
 ### 验证安装
 
 ```bash
@@ -41,6 +47,8 @@ img2text list-backends
 | OpenAI 兼容 | `OPENAI_API_KEY` + `OPENAI_BASE_URL` |
 | Ollama | 自动检测（端口 11434） |
 | vLLM | 自动检测（端口 8000）或 `VLLM_API_URL` |
+| llama.cpp (server) | 自动检测（端口 8080）或 `LLAMACPP_API_URL` |
+| llama.cpp (SDK) | `LLAMACPP_MODEL` + `LLAMACPP_MMPROJ` |
 
 ```bash
 # 查看可用后端
@@ -63,6 +71,23 @@ img2text config set provider ollama fast_model llava detailed_model llava
 
 # 切回自动检测，清空模型配置
 img2text config set provider "" fast_model "" detailed_model ""
+```
+
+llama.cpp 使用示例：
+
+```bash
+# server 模式 - 启动服务后自动检测
+llama-server -m model.gguf --mmproj mmproj.gguf --port 8080
+img2text config set provider llamacpp
+
+# SDK 模式 - 进程内推理
+export LLAMACPP_MODEL=/path/to/model.gguf
+export LLAMACPP_MMPROJ=/path/to/mmproj.gguf
+img2text convert image.png --backend llamacpp-sdk
+
+# 下载 GGUF 视觉模型（支持 HF_ENDPOINT 镜像）
+HF_ENDPOINT=https://hf-mirror.com img2text download-model --backend llamacpp
+img2text download-model --backend llamacpp --model repo/id --filename model.gguf
 ```
 
 配置文件位于 `~/.config/img2text/config.yaml`，可手动编辑。参考 [config.yaml](./config.yaml)。
