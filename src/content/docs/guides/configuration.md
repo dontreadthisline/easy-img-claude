@@ -16,6 +16,8 @@ img2text supports multiple vision-model backends:
 | OpenAI Compatible | Cloud API | `OPENAI_API_KEY` + `OPENAI_BASE_URL` |
 | Ollama | Local | Auto-detect (port 11434) |
 | vLLM | Local | Auto-detect (port 8000) or `VLLM_API_URL` |
+| llama.cpp (server) | Local | Auto-detect (port 8080) or `LLAMACPP_API_URL` |
+| llama.cpp (SDK) | Local | `LLAMACPP_MODEL` + `LLAMACPP_MMPROJ` env vars |
 | MLX | Local (macOS) | Explicit config required |
 
 ## Setting the Provider
@@ -80,6 +82,46 @@ vllm serve Qwen/Qwen2.5-VL-3B-Instruct
 ```
 
 img2text auto-detects vLLM on port 8000.
+
+### llama.cpp
+
+Two modes: **server** (auto-detect on port 8080) and **SDK** (process-inline).
+
+**Server mode:**
+
+```bash
+# Start the server with a vision model
+llama-server -m model.gguf --mmproj mmproj.gguf --port 8080
+
+# img2text auto-detects on port 8080
+img2text config set provider llamacpp
+```
+
+Also works with remote servers via `LLAMACPP_API_URL`.
+
+**SDK mode** (process-inline inference):
+
+```bash
+# Install with llama-cpp-python
+uv tool install git+https://github.com/dontreadthisline/easy-img-claude.git --with llama-cpp-python
+
+# Set model paths
+export LLAMACPP_MODEL=/path/to/model.gguf
+export LLAMACPP_MMPROJ=/path/to/mmproj.gguf
+
+# Use the SDK backend
+img2text convert image.png --backend llamacpp-sdk
+```
+
+**Download GGUF models:**
+
+```bash
+# Download default LLaVA model
+img2text download-model --backend llamacpp
+
+# Download specific GGUF from HuggingFace (supports HF_ENDPOINT mirror)
+img2text download-model --backend llamacpp --model repo/id --filename model.gguf
+```
 
 ### MLX (macOS only)
 

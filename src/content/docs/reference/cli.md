@@ -57,6 +57,8 @@ ollama               detected              localhost:11434 reachable
   models: llava:latest (fast), llava:latest (detailed)
 vllm                 detected              localhost:8000 reachable
   models: Qwen/Qwen2.5-VL-3B-Instruct (fast), Qwen/Qwen2.5-VL-3B-Instruct (detailed)
+llamacpp             detected              localhost:8080 reachable
+  models: llama.cpp server (fast), llama.cpp server (detailed)
 mlx                  not_configured        requires explicit config
   models: mlx-community/Qwen2-VL-2B-Instruct-bf16 (default)
 ```
@@ -115,8 +117,9 @@ img2text download-model [OPTIONS]
 ```
 
 **Options:**
-- `--backend [mlx|vllm|ollama]` — Backend type (default: auto-detect or mlx)
+- `--backend [mlx|vllm|ollama|llamacpp]` — Backend type (default: auto-detect or mlx)
 - `--model <name>` — Model to download (default: from config or backend default)
+- `--filename <name>` — Specific GGUF file to download (llamacpp only)
 
 **Examples:**
 
@@ -129,6 +132,12 @@ img2text download-model --backend ollama --model llava:13b
 
 # Download specific vLLM model
 img2text download-model --backend vllm --model Qwen/Qwen2.5-VL-3B-Instruct
+
+# Download default LLaVA GGUF model
+img2text download-model --backend llamacpp
+
+# Download specific GGUF file (supports HF_ENDPOINT mirror)
+img2text download-model --backend llamacpp --model repo/id --filename model.gguf
 ```
 
 ---
